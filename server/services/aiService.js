@@ -1,11 +1,12 @@
 /**
- * AI对话服务模块
- * 
+ * AI对话服务模块 v3.0
+ *
  * 功能说明：
- * 1. 对接MiniMax API提供智能对话能力
- * 2. 支持多种对话模式（辩论、问答、闲聊）
- * 3. 支持Soul角色扮演（根据不同性格生成回复）
- * 
+ * 1. 双模型支持：MiniMax（默认）+ DeepSeek（备用）
+ * 2. 自动切换：默认模型失败时自动切换到备用模型
+ * 3. 支持多种对话模式（辩论、问答、闲聊）
+ * 4. 支持Soul角色扮演（根据不同性格生成回复）
+ *
  * 使用方式：
  * const aiService = require('./aiService');
  * const response = await aiService.chat(message, { role: 'soul_001', personality: '...' });
@@ -16,15 +17,17 @@ const https = require('https');
 // 从环境变量读取API配置
 const MINIMAX_API_KEY = process.env.MINIMAX_API_KEY;
 const MINIMAX_BASE_URL = process.env.MINIMAX_BASE_URL || 'https://api.minimax.chat/v1';
+const MINIMAX_MODEL = process.env.MINIMAX_MODEL || 'MiniMax-M2.7';
+
+// DeepSeek配置（备用模型）
+const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY;
+const DEEPSEEK_BASE_URL = process.env.DEEPSEEK_BASE_URL || 'https://api.deepseek.com';
+const DEEPSEEK_MODEL = process.env.DEEPSEEK_MODEL || 'deepseek-v4-flash';
 
 /**
  * 调用MiniMax API进行AI对话
  * @param {string} message - 用户消息
  * @param {Object} options - 配置选项
- * @param {string} options.role - Soul角色ID
- * @param {string} options.personality - 角色性格描述
- * @param {string} options.style - 对话风格
- * @param {Array} options.history - 历史消息记录
  * @returns {Promise<string>} AI回复内容
  */
 async function chat(message, options = {}) {
@@ -51,16 +54,174 @@ async function chat(message, options = {}) {
     // 调用MiniMax API
     const response = await callMinimaxAPI(messages);
 
-    console.log(`[AI] API调用成功，回复长度: ${response.length}`);
+    console.log(`[AI] MiniMax API调用成功，回复长度: ${response.length}`);
 
     return response;
   } catch (error) {
-    console.error('[AI] API调用失败:', error.message);
-    
-    // 如果API调用失败，返回模拟回复作为降级方案
-    console.log('[AI] 使用模拟回复作为降级方案');
-    return generateFallbackResponse(message, role, personality);
+    console.error('[AI] MiniMax API调用失败:', error.message);
+    console.log('[AI] 正在切换到备用模型 DeepSeek...');
+
+    try {
+      // 调用DeepSeek API作为备用
+      const fallbackResponse = await callDeepSeekAPI(messages);
+      console.log(`[AI] DeepSeek API调用成功，回复长度: ${fallbackResponse.length}`);
+      return fallbackResponse;
+    } catch (deepseekError) {
+      console.error('[AI] DeepSeek API也调用失败:', deepseekError.message);
+      console.log('[AI] 使用模拟回复作为降级方案');
+      return generateFallbackResponse(message, role, personality);
+    }
   }
+}
+
+/**
+ * 调用MiniMax API
+ * @param {Array} messages - 消息数组
+ * @returns {Promise<string>} API响应内容
+ */
+function callMinimaxAPI(messages) {
+  return new Promise((resolve, reject) => {
+    const data = JSON.stringify({
+      model: MINIMAX_MODEL,
+      messages: messages,
+      temperature: 0.8,
+      max_tokens: 500,
+      top_p: 0.9
+    });
+
+    const url = new URL(`${MINIMAX_BASE_URL}/chat/completions`);
+    
+    const requestOptions = {
+      hostname: url.hostname,
+      port: 443,
+      path: url.pathname,
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${MINIMAX_API_KEY}`,
+        'Content-Length': Buffer.byteLength(data)
+      }
+    };
+
+    console.log(`[AI] 发送请求到 MiniMax: ${url.href}`);
+
+    const req = https.request(requestOptions, (res) => {
+      let responseData = '';
+
+      res.on('data', (chunk) => {
+        responseData += chunk;
+      });
+
+      res.on('end', () => {
+        try {
+          console.log(`[AI] MiniMax响应状态: ${res.statusCode}`);
+          const jsonResponse = JSON.parse(responseData);
+          
+          if (jsonResponse.error) {
+            reject(new Error(jsonResponse.error.message || 'MiniMax API错误'));
+            return;
+          }
+
+          if (jsonResponse.choices && jsonResponse.choices.length > 0) {
+            resolve(jsonResponse.choices[0].message.content);
+          } else {
+            reject(new Error('MiniMax API返回格式异常'));
+          }
+        } catch (parseError) {
+          console.error('[AI] 解析MiniMax响应失败:', parseError.message);
+          reject(new Error('解析API响应失败'));
+        }
+      });
+    });
+
+    req.on('error', (error) => {
+      console.error('[AI] MiniMax请求错误:', error.message);
+      reject(error);
+    });
+
+    req.setTimeout(30000, () => {
+      req.destroy();
+      reject(new Error('MiniMax API请求超时'));
+    });
+
+    req.write(data);
+    req.end();
+  });
+}
+
+/**
+ * 调用DeepSeek API（备用模型）
+ * @param {Array} messages - 消息数组
+ * @returns {Promise<string>} API响应内容
+ */
+function callDeepSeekAPI(messages) {
+  return new Promise((resolve, reject) => {
+    const data = JSON.stringify({
+      model: DEEPSEEK_MODEL,
+      messages: messages,
+      temperature: 0.8,
+      max_tokens: 500,
+      top_p: 0.9
+    });
+
+    const url = new URL(`${DEEPSEEK_BASE_URL}/chat/completions`);
+    
+    const requestOptions = {
+      hostname: url.hostname,
+      port: 443,
+      path: url.pathname,
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${DEEPSEEK_API_KEY}`,
+        'Content-Length': Buffer.byteLength(data)
+      }
+    };
+
+    console.log(`[AI] 发送请求到 DeepSeek: ${url.href}`);
+
+    const req = https.request(requestOptions, (res) => {
+      let responseData = '';
+
+      res.on('data', (chunk) => {
+        responseData += chunk;
+      });
+
+      res.on('end', () => {
+        try {
+          console.log(`[AI] DeepSeek响应状态: ${res.statusCode}`);
+          const jsonResponse = JSON.parse(responseData);
+          
+          if (jsonResponse.error) {
+            reject(new Error(jsonResponse.error.message || 'DeepSeek API错误'));
+            return;
+          }
+
+          if (jsonResponse.choices && jsonResponse.choices.length > 0) {
+            resolve(jsonResponse.choices[0].message.content);
+          } else {
+            reject(new Error('DeepSeek API返回格式异常'));
+          }
+        } catch (parseError) {
+          console.error('[AI] 解析DeepSeek响应失败:', parseError.message);
+          reject(new Error('解析API响应失败'));
+        }
+      });
+    });
+
+    req.on('error', (error) => {
+      console.error('[AI] DeepSeek请求错误:', error.message);
+      reject(error);
+    });
+
+    req.setTimeout(30000, () => {
+      req.destroy();
+      reject(new Error('DeepSeek API请求超时'));
+    });
+
+    req.write(data);
+    req.end();
+  });
 }
 
 /**
@@ -96,77 +257,7 @@ function buildSystemPrompt(role, personality, style) {
 }
 
 /**
- * 调用MiniMax API
- * @param {Array} messages - 消息数组
- * @returns {Promise<string>} API响应内容
- */
-function callMinimaxAPI(messages) {
-  return new Promise((resolve, reject) => {
-    const data = JSON.stringify({
-      model: 'MiniMax-M2.7',
-      messages: messages,
-      temperature: 0.8,
-      max_tokens: 500,
-      top_p: 0.9
-    });
-
-    const url = new URL(`${MINIMAX_BASE_URL}/chat/completions`);
-    
-    const requestOptions = {
-      hostname: url.hostname,
-      port: 443,
-      path: url.pathname,
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${MINIMAX_API_KEY}`,
-        'Content-Length': Buffer.byteLength(data)
-      }
-    };
-
-    const req = https.request(requestOptions, (res) => {
-      let responseData = '';
-
-      res.on('data', (chunk) => {
-        responseData += chunk;
-      });
-
-      res.on('end', () => {
-        try {
-          const jsonResponse = JSON.parse(responseData);
-          
-          if (jsonResponse.error) {
-            reject(new Error(jsonResponse.error.message || 'API错误'));
-            return;
-          }
-
-          if (jsonResponse.choices && jsonResponse.choices.length > 0) {
-            resolve(jsonResponse.choices[0].message.content);
-          } else {
-            reject(new Error('API返回格式异常'));
-          }
-        } catch (parseError) {
-          reject(new Error('解析API响应失败'));
-        }
-      });
-    });
-
-    req.on('error', (error) => {
-      reject(error);
-    });
-
-    req.setTimeout(30000, () => {
-      req.destroy();
-      reject(new Error('API请求超时'));
-    });
-
-    req.write(data);
-    req.end();
-  });
-}
-
-/**
- * 生成降级回复（当API不可用时）
+ * 生成降级回复（当所有API都不可用时）
  * @param {string} userMessage - 用户消息
  * @param {string} role - 角色ID
  * @param {string} personality - 性格描述

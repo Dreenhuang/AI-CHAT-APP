@@ -115,7 +115,7 @@ const avatarStyles = [
 #### 4.1 DeepSeek V4 Flash默认模型 (100%)
 **需求**: 内置DeepSeek V4 Flash作为默认模型  
 **实现状态**: ✅ 完成
-- **API Key**: sk-7f85a014ff1f4fb7938163b2717b70d5
+- **API Key**: (redacted for security)
 - **Base URL**: https://api.deepseek.com
 - **Model**: deepseek-v4-flash / deepseek-v4-pro
 

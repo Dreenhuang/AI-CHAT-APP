@@ -39,7 +39,7 @@ export const PRESET_MODELS: Record<string, AIModelConfig> = {
   'deepseek-v4-flash': {
     model: 'deepseek-v4-flash',
     baseUrl: 'https://api.deepseek.com',
-    apiKey: 'sk-7f85a014ff1f4fb7938163b2717b70d5', // 用户提供的默认Key
+    apiKey: 'your_deepseek_api_key_here', // 用户提供的默认Key
     displayName: 'DeepSeek V4 Flash',
     description: 'DeepSeek最新版本，响应快速，适合日常对话和讨论',
     maxTokens: 4096,
@@ -48,7 +48,7 @@ export const PRESET_MODELS: Record<string, AIModelConfig> = {
   'deepseek-v4-pro': {
     model: 'deepseek-v4-pro',
     baseUrl: 'https://api.deepseek.com',
-    apiKey: 'sk-7f85a014ff1f4fb7938163b2717b70d5',
+    apiKey: 'your_deepseek_api_key_here',
     displayName: 'DeepSeek V4 Pro',
     description: 'DeepSeek专业版，深度推理能力强，适合复杂辩论',
     maxTokens: 8192,

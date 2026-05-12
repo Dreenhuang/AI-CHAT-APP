@@ -10,7 +10,7 @@ import { ApiResponse, PaginatedResponse, Topic, Conversation, Soul, Message, Deb
 // ============ 配置 ============
 
 /** API基础地址 */
-const BASE_URL = 'http://localhost:9461/api/v1';
+const BASE_URL = 'http://localhost:9461/api';
 
 /** 请求超时时间（毫秒） */
 const TIMEOUT = 15000;

@@ -28,8 +28,8 @@ import { Ionicons } from '@expo/vector-icons';
 import TopicCard from '../../components/TopicCard';
 import EmptyState from '../../components/EmptyState';
 
-// Import data
-import { allTopics, getRandomTopics, getTopicsByCategory, TopicCategory } from '../../data/topics';
+// 导入数据
+import { allTopics, getRandomTopics, getTopicsByCategory, TopicCategory, Topic } from '../../data/topics';
 
 // Import theme
 import { Colors } from '../../theme/colors';
@@ -37,19 +37,19 @@ import { Colors } from '../../theme/colors';
 /** Screen dimensions for responsive design */
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-/** Category configuration */
+/** Category configuration - 中英双语 */
 const categories = [
-  { key: 'all', label: 'All', icon: 'grid-outline' },
-  { key: 'tech', label: 'Technology', icon: 'hardware-chip-outline' },
-  { key: 'education', label: 'Education', icon: 'school-outline' },
-  { key: 'social', label: 'Society', icon: 'people-outline' },
-  { key: 'lifestyle', label: 'Lifestyle', icon: 'leaf-outline' },
-  { key: 'entertainment', label: 'Entertainment', icon: 'film-outline' },
-  { key: 'sports', label: 'Sports', icon: 'fitness-outline' },
-  { key: 'politics', label: 'Politics', flag: 'flag-outline' },
-  { key: 'economy', label: 'Economy', icon: 'trending-up-outline' },
-  { key: 'culture', label: 'Culture', icon: 'musical-notes-outline' },
-  { key: 'environment', label: 'Environment', icon: 'earth-outline' },
+  { key: 'all', label: '全部', icon: 'grid-outline' },
+  { key: 'tech', label: '科技', icon: 'hardware-chip-outline' },
+  { key: 'education', label: '教育', icon: 'school-outline' },
+  { key: 'social', label: '社会', icon: 'people-outline' },
+  { key: 'lifestyle', label: '生活', icon: 'leaf-outline' },
+  { key: 'entertainment', label: '娱乐', icon: 'film-outline' },
+  { key: 'sports', label: '体育', icon: 'fitness-outline' },
+  { key: 'politics', label: '政治', flag: 'flag-outline' },
+  { key: 'economy', label: '经济', icon: 'trending-up-outline' },
+  { key: 'culture', label: '文化', icon: 'musical-notes-outline' },
+  { key: 'environment', label: '环境', icon: 'earth-outline' },
 ];
 
 const DiscoverScreen: React.FC = () => {
@@ -200,18 +200,27 @@ const DiscoverScreen: React.FC = () => {
   };
 
   /**
-   * Handle category selection
+   * 处理分类选择
    */
   const handleFilterSelect = (category: string) => {
     setSelectedCategory(category);
     setShowFilter(false);
 
-    if (category === 'All') {
-      loadRandomTopics();
+    // 重置加载状态并重新加载
+    setHasMore(true);
+    setLoadingMore(false);
+
+    if (category === '全部') {
+      const newTopics = getRandomTopics(30);
+      setTopics(newTopics);
+      setDisplayedTopics(newTopics);
     } else {
+      // 按分类筛选后随机取30个
       const filtered = getTopicsByCategory(category as TopicCategory);
       const shuffled = [...filtered].sort(() => Math.random() - 0.5);
-      setTopics(shuffled.slice(0, Math.min(20, filtered.length)));
+      const newTopics = shuffled.slice(0, Math.min(30, filtered.length));
+      setTopics(newTopics);
+      setDisplayedTopics(newTopics);
     }
   };
 
@@ -243,8 +252,8 @@ const DiscoverScreen: React.FC = () => {
   const renderEmptyComponent = () => (
     <EmptyState
       icon="search"
-      title="No Topics Found"
-      description="Try a different category?"
+      title="暂无议题"
+      description="尝试切换其他分类？"
     />
   );
 
@@ -260,8 +269,8 @@ const DiscoverScreen: React.FC = () => {
       {/* ==================== Header ==================== */}
       <View style={styles.headerContainer}>
         <View style={styles.headerGradient}>
-          <Text style={styles.headerTitle}>Discover</Text>
-          <Text style={styles.headerSubtitle}>Explore trending debates</Text>
+          <Text style={styles.headerTitle}>发现</Text>
+          <Text style={styles.headerSubtitle}>探索热门议题，开启精彩讨论</Text>
         </View>
       </View>
 
@@ -273,7 +282,7 @@ const DiscoverScreen: React.FC = () => {
       >
         <Ionicons name="filter" size={16} color={Colors.textSecondary} style={styles.filterIcon} />
         <Text style={styles.filterText}>
-          Category: {selectedCategory}
+          分类：{selectedCategory}
         </Text>
         <View style={styles.filterBadge}>
           <Text style={styles.filterBadgeText}>{topics.length}</Text>
@@ -297,7 +306,7 @@ const DiscoverScreen: React.FC = () => {
           <View style={styles.modalContent}>
             {/* Modal header */}
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Select Category</Text>
+              <Text style={styles.modalTitle}>选择分类</Text>
               <TouchableOpacity
                 onPress={() => setShowFilter(false)}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
@@ -350,10 +359,11 @@ const DiscoverScreen: React.FC = () => {
 
       {/* ==================== Topic Cards List ==================== */}
       <FlatList
-        data={topics}
+        data={displayedTopics}
         keyExtractor={(item) => item.id}
         renderItem={renderTopicCard}
         ListEmptyComponent={renderEmptyComponent}
+        ListFooterComponent={renderFooter}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -363,17 +373,18 @@ const DiscoverScreen: React.FC = () => {
           />
         }
         contentContainerStyle={
-          topics.length === 0 ? styles.emptyListContent : styles.listContent
+          displayedTopics.length === 0 ? styles.emptyListContent : styles.listContent
         }
         showsVerticalScrollIndicator={false}
-        
-        // Performance optimization
-        removeClippedSubviews={true}
-        maxToRenderPerBatch={8}
-        updateCellsBatchingPeriod={50}
-        windowSize={10}
-        
-        numColumns={1}
+
+        // ========== 加载更多配置 ==========
+        onEndReached={loadMoreTopics}
+        onEndReachedThreshold={0.3} // 距离底部30%时触发加载
+        initialNumToRender={15} // 首次渲染数量（优化性能）
+        maxToRenderPerBatch={10} // 每批渲染最大数量
+        windowSize={21} // 视窗大小（影响渲染范围）
+        removeClippedSubviews={true} // 移除屏幕外子视图
+        updateCellsBatchingPeriod={50} // 批量更新间隔(ms)
       />
     </View>
   );
@@ -553,14 +564,28 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 
-  // ========== List Styles ==========
+  // ========== List Styles ==========// 列表样式
   listContent: {
     padding: 12,
     paddingBottom: 40,
   },
-
   emptyListContent: {
     flex: 1,
+  },
+
+  // 底部加载样式
+  footerContainer: {
+    paddingVertical: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  footerText: {
+    fontSize: 13,
+    color: Colors.textSecondary,
+  },
+  loadingText: {
+    fontSize: 13,
+    color: Colors.primary,
   },
 });
 

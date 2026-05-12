@@ -1,12 +1,17 @@
 /**
- * Toast提示组件 - Toast
+ * Toast提示组件 - Toast v2.0 (Tech Premium)
  * 
  * 用于轻量级消息提示（成功、错误、警告、信息）
  * 自动消失，支持自定义时长
+ * 
+ * 升级内容：
+ * - 使用 Ionicons 专业图标替代文本标识符
+ * - 优化动画和视觉反馈
  */
 
 import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Animated } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../theme/colors';
 
 interface ToastProps {
@@ -22,28 +27,32 @@ interface ToastProps {
   onClose?: () => void;
 }
 
-/** 类型对应的配置 */
+/** 类型对应的配置 - 使用 Ionicons 图标 */
 const typeConfig = {
   success: {
-    icon: '✓',
+    icon: 'checkmark-circle' as const,
+    iconColor: '#2E7D32',
     backgroundColor: '#E8F5E9',
     textColor: '#2E7D32',
     borderColor: '#C8E6C9',
   },
   error: {
-    icon: '✕',
+    icon: 'close-circle' as const,
+    iconColor: '#C62828',
     backgroundColor: '#FFEBEE',
     textColor: '#C62828',
     borderColor: '#FFCDD2',
   },
   warning: {
-    icon: '⚠',
+    icon: 'warning' as const,
+    iconColor: '#EF6C00',
     backgroundColor: '#FFF3E0',
     textColor: '#EF6C00',
     borderColor: '#FFE0B2',
   },
   info: {
-    icon: 'ℹ',
+    icon: 'information-circle' as const,
+    iconColor: '#1565C0',
     backgroundColor: '#E3F2FD',
     textColor: '#1565C0',
     borderColor: '#BBDEFB',
@@ -64,9 +73,10 @@ const Toast: React.FC<ToastProps> = ({
     if (visible) {
       // 显示动画
       Animated.parallel([
-        Animated.timing(slideAnim, {
+        Animated.spring(slideAnim, {
           toValue: 0,
-          duration: 250,
+          friction: 8,
+          tension: 40,
           useNativeDriver: true,
         }),
         Animated.timing(fadeAnim, {
@@ -118,11 +128,7 @@ const Toast: React.FC<ToastProps> = ({
         },
       ]}
     >
-      <View style={styles.iconContainer}>
-        <Text style={[styles.icon, { color: config.textColor }]}>
-          {config.icon}
-        </Text>
-      </View>
+      <Ionicons name={config.icon} size={22} color={config.iconColor} style={styles.icon} />
       <Text 
         style={[styles.message, { color: config.textColor }]} 
         numberOfLines={2}
@@ -152,12 +158,8 @@ const styles = StyleSheet.create({
     elevation: 6,
     zIndex: 9999,
   },
-  iconContainer: {
-    marginRight: 10,
-  },
   icon: {
-    fontSize: 18,
-    fontWeight: '700',
+    marginRight: 10,
   },
   message: {
     flex: 1,

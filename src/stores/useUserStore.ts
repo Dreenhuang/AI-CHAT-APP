@@ -42,6 +42,9 @@ interface UserState {
   /** 登出 */
   logout: () => void;
   
+  /** 游客模式登录（免注册） */
+  loginAsGuest: () => void;
+  
   /** 设置Token */
   setToken: (token: string | null) => void;
   
@@ -104,6 +107,32 @@ export const useUserStore = create<UserState>((set, get) => ({
       token: null,
       isLoggedIn: false,
     }),
+  
+  /**
+   * 游客模式登录
+   * 创建一个临时的游客用户，标记为未登录状态但可以使用基础功能
+   */
+  loginAsGuest: () => {
+    const guestUser: User = {
+      id: `guest_${Date.now()}`,
+      nickname: '游客用户',
+      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=guest',
+      bio: '以游客身份体验应用功能',
+      level: 1,
+      experience: 0,
+      totalDebates: 0,
+      winRate: 0,
+      createdAt: new Date().toISOString(),
+    };
+
+    set({
+      user: guestUser,
+      token: null, // 游客模式无token
+      isLoggedIn: false, // 标记为未正式登录
+    });
+
+    console.log('[UserStore] 已切换为游客模式');
+  },
   
   setToken: (token) => set({ token }),
   

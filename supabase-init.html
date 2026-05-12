@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Chat - Supabase数据库初始化</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 800px;
+            width: 100%;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 28px;
+        }
+        .step {
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+        }
+        .step h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+        .btn {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 30px;
+            border-radius: 50px;
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 16px;
+            transition: transform 0.3s, box-shadow 0.3s;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+        .code-block {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 15px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.5;
+            margin-top: 15px;
+        }
+        .status {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        .success { background: #d4edda; color: #155724; }
+        .warning { background: #fff3cd; color: #856404; }
+        .info { background: #cce5ff; color: #004085; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 AI Chat 数据库初始化向导</h1>
+        
+        <div class="step">
+            <h3>📋 步骤 1: 打开Supabase SQL Editor</h3>
+            <p>点击下方按钮，在新标签页中打开Supabase SQL Editor：</p>
+            <br>
+            <a href="https://jaduaifzmgvaotyqnjfe.supabase.co/project/sql" target="_blank" class="btn">
+                🔗 打开 Supabase SQL Editor
+            </a>
+        </div>
+
+        <div class="step">
+            <h3>📝 步骤 2: 复制并执行SQL</h3>
+            <p>复制以下完整SQL代码，粘贴到SQL Editor中并点击 <strong>RUN</strong> 执行：</p>
+            
+            <div class="code-block" id="sqlCode">-- ============================================================
+-- AI Chat 数据库表结构初始化脚本
+-- 项目: AI Chat (aichat-app)
+-- 日期: 2026-05-12
+-- ============================================================
+
+-- 1. 议题表 (topics)
+CREATE TABLE IF NOT EXISTS topics (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    title VARCHAR(200) NOT NULL,
+    description TEXT,
+    category VARCHAR(50) NOT NULL,
+    tags TEXT[],
+    view_count INTEGER DEFAULT 0,
+    debate_count INTEGER DEFAULT 0,
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_topics_category ON topics(category);
+CREATE INDEX IF NOT EXISTS idx_topics_active ON topics(is_active);
+
+-- 插入预设议题数据
+INSERT INTO topics (title, description, category, tags) VALUES
+('人工智能会取代人类工作吗？', '讨论AI对就业市场的影响', 'tech', ARRAY['AI', '就业']),
+('远程办公是更好的工作方式吗？', '比较远程与传统办公的优缺点', 'lifestyle', ARRAY['远程', '效率']),
+('气候变化是当今最大的威胁吗？', '分析全球变暖的影响', 'environment', ARRAY['气候', '环保']),
+('社交媒体是否让人更孤独？', '探讨社交网络对人际关系的影响', 'social', ARRAY['社交', '心理']),
+('大学教育是否还值得投资？', '评估高等教育的回报率', 'education', ARRAY['教育', '投资']),
+('是否应该实行全民基本收入？', '讨论UBI政策的可行性', 'politics', ARRAY['经济', '政策']),
+('电动汽车能完全取代燃油车吗？', '对比两种动力系统', 'tech', ARRAY['汽车', '科技']),
+('人工智能应该拥有法律权利吗？', '探讨AI伦理问题', 'tech', ARRAY['AI', '伦理'])
+ON CONFLICT DO NOTHING;
+
+-- 2. 群组表 (groups)
+CREATE TABLE IF NOT EXISTS groups (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    description TEXT,
+    mode_id VARCHAR(50),
+    owner_id UUID REFERENCES users(id),
+    avatar TEXT,
+    member_count INTEGER DEFAULT 0,
+    is_public BOOLEAN DEFAULT true,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_groups_owner ON groups(owner_id);
+CREATE INDEX IF NOT EXISTS idx_groups_public ON groups(is_public);
+
+-- 3. Soul好友表 (souls)
+CREATE TABLE IF NOT EXISTS souls (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    user_id UUID REFERENCES users(id),
+    name VARCHAR(50) NOT NULL,
+    soul_content TEXT,
+    personality VARCHAR(50),
+    specialty VARCHAR(100),
+    avatar TEXT,
+    win_rate DECIMAL(5,2) DEFAULT 0.00,
+    debate_count INTEGER DEFAULT 0,
+    is_online BOOLEAN DEFAULT false,
+    is_preset BOOLEAN DEFAULT false,
+    category_type VARCHAR(50),
+    added_at TIMESTAMPTZ DEFAULT NOW(),
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_souls_user ON souls(user_id);
+CREATE INDEX IF NOT EXISTS idx_souls_personality ON souls(personality);
+
+-- 4. 辩论记录表 (debates)
+CREATE TABLE IF NOT EXISTS debates (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    user_id UUID REFERENCES users(id),
+    group_id UUID REFERENCES groups(id),
+    topic_id UUID REFERENCES topics(id),
+    topic_title VARCHAR(500),
+    messages JSONB DEFAULT '[]'::jsonb,
+    status VARCHAR(20) DEFAULT 'active',
+    participant_count INTEGER DEFAULT 0,
+    message_count INTEGER DEFAULT 0,
+    started_at TIMESTAMPTZ DEFAULT NOW(),
+    ended_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_debates_user ON debates(user_id);
+CREATE INDEX IF NOT EXISTS idx_debates_group ON debates(group_id);
+CREATE INDEX IF NOT EXISTS idx_debates_status ON debates(status);
+
+-- 验证结果
+SELECT 
+    'Database initialization completed!' AS status,
+    (SELECT COUNT(*) FROM users) AS users_count,
+    (SELECT COUNT(*) FROM topics) AS topics_count,
+    (SELECT COUNT(*) FROM groups) AS groups_count,
+    (SELECT COUNT(*) FROM souls) AS souls_count,
+    (SELECT COUNT(*) FROM debates) AS debates_count;</div>
+            
+            <br>
+            <button onclick="copySQL()" class="btn">📋 复制SQL代码</button>
+            <span id="copyStatus" class="status info" style="display:none;">✅ 已复制！</span>
+        </div>
+
+        <div class="step">
+            <h3>✅ 步骤 3: 验证结果</h3>
+            <p>执行成功后，您应该看到类似以下结果：</p>
+            <pre style="background:#f8f9fa;padding:15px;border-radius:8px;margin-top:10px;">
+status                          | users_count | topics_count | groups_count | souls_count | debates_count
+-------------------------------+-------------+--------------+--------------+-------------+--------------
+Database initialization completed! |           X |            8 |            0 |           0 |             0
+            </pre>
+        </div>
+        
+        <div style="text-align:center;margin-top:30px;">
+            <span class="status success">✅ users表已存在</span>
+            <span class="status warning" style="margin-left:10px;">⏳ 需要创建其他表</span>
+        </div>
+    </div>
+
+    <script>
+        function copySQL() {
+            const sqlCode = document.getElementById('sqlCode').innerText;
+            navigator.clipboard.writeText(sqlCode).then(() => {
+                document.getElementById('copyStatus').style.display = 'inline-flex';
+                setTimeout(() => {
+                    document.getElementById('copyStatus').style.display = 'none';
+                }, 2000);
+            });
+        }
+    </script>
+</body>
+</html>

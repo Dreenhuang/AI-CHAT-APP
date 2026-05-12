@@ -28,12 +28,12 @@ interface ContactItemProps {
 
 /** 性格对应的颜色和图标 */
 const personalityConfig = {
-  rational: { color: '#2196F3', icon: '🧠', label: '理性' },
-  emotional: { color: '#E91E63', icon: '❤️', label: '情感' },
-  aggressive: { color: '#FF9800', icon: '⚡', label: '激进' },
-  moderate: { color: '#4CAF50', icon: '🕊️', label: '温和' },
-  creative: { color: '#9C27B0', icon: '💡', label: '创意' },
-  critical: { color: '#607D8B', icon: '🔍', label: '批判' },
+  rational: { color: '#2196F3', icon: 'R', label: '理性' },
+  emotional: { color: '#E91E63', icon: 'E', label: '情感' },
+  aggressive: { color: '#FF9800', icon: 'A', label: '激进' },
+  moderate: { color: '#4CAF50', icon: 'M', label: '温和' },
+  creative: { color: '#9C27B0', icon: 'C', label: '创意' },
+  critical: { color: '#607D8B', icon: 'K', label: '批判' },
 };
 
 const ContactItem: React.FC<ContactItemProps> = ({

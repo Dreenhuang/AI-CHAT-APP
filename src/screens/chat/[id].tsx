@@ -35,6 +35,7 @@ import {
   Image,
 } from 'react-native';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
 
 // 导入组件
 import ChatBubble from '../../components/ChatBubble';
@@ -163,9 +164,9 @@ const ChatDetailScreen: React.FC = () => {
    * 2. 创建用户消息对象并添加到Store
    * 3. 清空输入框
    * 4. 滚动到最新消息
-   * 5. 模拟AI回复（Demo模式）
+   * 5. 调用AI API生成回复（真实模式）
    */
-  const handleSend = useCallback(() => {
+  const handleSend = useCallback(async () => {
     if (!inputText.trim()) {
       showToast('请输入消息内容', 'warning');
       return;
@@ -186,6 +187,7 @@ const ChatDetailScreen: React.FC = () => {
     addMessage(userMessage);
 
     // 清空输入框
+    const messageContent = inputText.trim();
     setInputText('');
 
     // 延迟滚动到最新消息（等待渲染完成）
@@ -193,69 +195,138 @@ const ChatDetailScreen: React.FC = () => {
       flatListRef.current?.scrollToEnd({ animated: true });
     }, 100);
 
-    // ========== Demo模式：模拟AI回复 ==========
-    // 在实际项目中，这里应该通过WebSocket发送到后端AI服务
-    simulateAIResponse(inputText.trim());
+    // ========== 调用AI API生成真实回复 ==========
+    await callAIAPI(messageContent);
   }, [inputText, conversationId, addMessage]);
 
   /**
-   * 模拟AI回复（用于Demo演示）
+   * 调用AI服务生成真实回复
    *
-   * 实际项目中应替换为：
-   * 1. 通过WebSocket发送消息到服务端
-   * 2. 服务端调用AI模型生成回复
-   * 3. 通过WebSocket推送回复给客户端
+   * 实现方式：
+   * 1. 通过HTTP POST调用后端 /api/ai/generate 接口
+   * 2. 后端对接MiniMax API生成智能回复
+   * 3. 如果API失败，降级为模拟回复
    */
-  const simulateAIResponse = (userMessageContent: string) => {
+  const callAIAPI = async (userMessageContent: string) => {
     // 显示"正在输入中..."状态
     setIsTyping(true);
 
-    // 随机延迟1.5-2.5秒模拟AI思考时间
-    const delay = 1500 + Math.random() * 1000;
-
-    setTimeout(() => {
-      // 预设的AI回复模板（实际项目使用真实AI生成）
-      const responses = [
-        '这是一个很有趣的观点！让我从另一个角度来分析...',
-        '我理解你的想法，不过是否考虑过以下可能性？',
-        '这个论点很有说服力，但我认为还有值得商榷的地方。',
-        '感谢你的分享！这让我想到了一个相关的议题...',
-        '你的观点很有创意！我们可以进一步探讨...',
-        '从逻辑角度来看，这个观点存在一些值得思考的地方...',
-        '我同意你的部分看法，但也有一些不同的见解...',
-        '这是一个值得深入讨论的问题！让我们从多个角度分析...',
-      ];
-
-      // 随机选择一个回复
-      const aiContent = responses[Math.floor(Math.random() * responses.length)];
-
-      // 获取当前会话的AI/Soul参与者信息
-      const aiParticipant = currentConversation?.participants.find(
-        (p) => p.role === 'ai' || p.role === 'soul'
-      );
-
-      // 创建AI消息
-      const aiMessage: Message = {
-        id: generateId('msg'),
+    try {
+      // 获取当前选中的角色信息（用于个性化回复）
+      const selectedSoul = selectedRole ? getSoulById(selectedRole) : null;
+      
+      const aiRequestBody = {
+        message: userMessageContent,
+        role: selectedSoul?.id || 'default',
+        personality: selectedSoul?.description || '你是一个理性的辩论助手',
+        style: selectedSoul?.personality || '专业、有逻辑、友好',
         conversationId,
-        sender: aiParticipant?.role === 'soul' ? 'soul' : 'ai',
-        content: aiContent,
-        type: 'text',
-        status: 'delivered',
-        timestamp: new Date().toISOString(),
-        soulId: aiParticipant?.id, // 记录来源Soul ID（如果有）
+        topicId: topicId || null,
       };
 
-      // 添加AI消息到Store
-      addMessage(aiMessage);
+      console.log('[Chat] 正在调用AI API...', aiRequestBody);
 
-      // 隐藏"正在输入中..."状态
-      setIsTyping(false);
+      // 调用后端AI接口
+      const response = await fetch('http://localhost:9461/api/ai/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(aiRequestBody),
+      });
 
-      // 滚动到最新消息
-      setTimeout(() => {
-        flatListRef.current?.scrollToEnd({ animated: true });
-      }, 100);
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || `API错误 (${response.status})`);
+      }
+
+      if (!data.success || !data.content) {
+        throw new Error(data.error || 'AI返回内容为空');
+      }
+
+      console.log('[Chat] AI回复成功:', data.content.slice(0, 50) + '...');
+
+      // 创建AI消息
+      createAIMessage(data.content, selectedSoul?.id);
+
+    } catch (error) {
+      console.error('[Chat] AI API调用失败:', error);
+      
+      // 降级方案：使用模拟回复
+      console.log('[Chat] 使用模拟回复作为降级方案');
+      useFallbackResponse(userMessageContent);
+    }
+  };
+
+  /**
+   * 创建AI消息并添加到聊天列表
+   */
+  const createAIMessage = (content: string, soulId?: string) => {
+    // 获取当前会话的AI/Soul参与者信息
+    const aiParticipant = currentConversation?.participants.find(
+      (p) => p.role === 'ai' || p.role === 'soul'
+    );
+
+    // 创建AI消息
+    const aiMessage: Message = {
+      id: generateId('msg'),
+      conversationId,
+      sender: soulId ? 'soul' : 'ai',
+      content,
+      type: 'text',
+      status: 'delivered',
+      timestamp: new Date().toISOString(),
+      soulId: soulId || aiParticipant?.id,
+    };
+
+    // 添加AI消息到Store
+    addMessage(aiMessage);
+
+    // 隐藏"正在输入中..."状态
+    setIsTyping(false);
+
+    // 滚动到最新消息
+    setTimeout(() => {
+      flatListRef.current?.scrollToEnd({ animated: true });
+    }, 100);
+  };
+
+  /**
+   * 降级回复（当AI API不可用时）
+   * 使用预设模板生成模拟回复
+   */
+  const useFallbackResponse = (userMessageContent: string) => {
+    // 模拟思考延迟
+    const delay = 800 + Math.random() * 700;
+
+    setTimeout(() => {
+      // 根据用户消息长度选择不同回复策略
+      let fallbackContent: string;
+
+      if (userMessageContent.length > 50) {
+        // 长消息：给出详细回应
+        fallbackContent = `这是一个很有深度的观点！你提到的"${userMessageContent.slice(0, 20)}..."让我从多个角度来分析。首先，这个问题的核心在于...其次...你觉得呢？`;
+      } else if (userMessageContent.includes('?')) {
+        // 问题：给出回答
+        fallbackContent = `好问题！关于"${userMessageContent}"，我认为需要综合考虑几个方面。第一...第二...第三...你还有其他想法吗？`;
+      } else {
+        // 短陈述：引导继续讨论
+        const responses = [
+          '我理解你的意思了。不过从另一个角度来看呢？',
+          '这个观点很有意思！我们可以进一步探讨一下。',
+          '你说得有一定道理，但我也有一些不同的看法想分享。',
+          '感谢你的分享！这让我想到了一个相关的议题...',
+          '让我们深入分析一下这个观点的利弊得失。',
+        ];
+        fallbackContent = responses[Math.floor(Math.random() * responses.length)];
+      }
+
+      // 标记为降级回复
+      fallbackContent += '\n\n（注：当前为离线模式，已连接网络后将启用AI智能回复）';
+
+      // 创建消息
+      createAIMessage(fallbackContent);
     }, delay);
   };
 
@@ -309,7 +380,7 @@ const ChatDetailScreen: React.FC = () => {
    */
   const renderEmpty = () => (
     <EmptyState
-      icon="✉️"
+      icon="mail"
       title="还没有消息"
       description="发送第一条消息开始讨论吧！"
     />
@@ -335,7 +406,7 @@ const ChatDetailScreen: React.FC = () => {
       // 用户离线
       return (
         <View style={styles.offlineIndicator}>
-          <Text style={styles.offlineIcon}>⚠️</Text>
+          <Ionicons name="cloud-offline" size={16} color="#E65100" style={styles.offlineIcon} />
           <Text style={styles.offlineText}>用户离线</Text>
         </View>
       );
@@ -394,7 +465,7 @@ const ChatDetailScreen: React.FC = () => {
                   {role.name}
                 </Text>
                 {selectedRole === role.id && (
-                  <Text style={styles.roleCheckMark}>✓</Text>
+                  <Ionicons name="checkmark-circle" size={20} color={Colors.primary} style={styles.roleCheckMark} />
                 )}
               </TouchableOpacity>
             ))}
@@ -419,7 +490,7 @@ const ChatDetailScreen: React.FC = () => {
           onPress={() => navigation.goBack()}
           activeOpacity={0.7}
         >
-          <Text style={styles.backButtonText}>‹</Text>
+          <Ionicons name="chevron-back" size={28} color="#FFFFFF" />
         </TouchableOpacity>
 
         {/* 中间：标题区域 */}
@@ -441,14 +512,14 @@ const ChatDetailScreen: React.FC = () => {
 
         {/* 右侧：菜单按钮 */}
         <TouchableOpacity style={styles.moreButton}>
-          <Text style={styles.moreButtonText}>⋮</Text>
+          <Ionicons name="ellipsis-vertical" size={22} color="#FFFFFF" />
         </TouchableOpacity>
       </View>
 
       {/* ==================== 议题信息条（可选） ==================== */}
       {topicId && (
         <View style={styles.topicBar}>
-          <Text style={styles.topicIcon}>📋</Text>
+          <Ionicons name="chatbox-ellipses" size={16} color="#F57C00" style={styles.topicIcon} />
           <Text style={styles.topicText} numberOfLines={1}>
             正在讨论：{topicId}
           </Text>
@@ -524,13 +595,13 @@ const ChatDetailScreen: React.FC = () => {
         {/* 功能扩展按钮栏（可选） */}
         <View style={styles.toolbar}>
           <TouchableOpacity style={styles.toolButton}>
-            <Text style={styles.toolIcon}>🎤</Text>
+            <Ionicons name="camera-outline" size={22} color={Colors.textSecondary} />
           </TouchableOpacity>
           <TouchableOpacity style={styles.toolButton}>
-            <Text style={styles.toolIcon}>📷</Text>
+            <Ionicons name="image-outline" size={22} color={Colors.textSecondary} />
           </TouchableOpacity>
           <TouchableOpacity style={styles.toolButton}>
-            <Text style={styles.toolIcon}>➕</Text>
+            <Ionicons name="mic-outline" size={22} color={Colors.textSecondary} />
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
@@ -570,11 +641,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  backButtonText: {
-    fontSize: 28,
-    color: '#FFFFFF', // 白色
-    marginTop: -4,
-  },
   headerCenter: {
     flex: 1,
     marginHorizontal: 8,
@@ -597,10 +663,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  moreButtonText: {
-    fontSize: 24,
-    color: '#FFFFFF',
-  },
 
   // ========== 议题信息条 ==========
   topicBar: {
@@ -613,7 +675,6 @@ const styles = StyleSheet.create({
     borderBottomColor: '#FFE082',
   },
   topicIcon: {
-    fontSize: 14,
     marginRight: 6,
   },
   topicText: {
@@ -701,7 +762,6 @@ const styles = StyleSheet.create({
     borderBottomColor: '#FFE0B2',
   },
   offlineIcon: {
-    fontSize: 14,
     marginRight: 6,
   },
   offlineText: {
@@ -767,9 +827,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   roleCheckMark: {
-    fontSize: 16,
-    color: Colors.primary,
-    fontWeight: '700',
+    marginLeft: 8,
   },
 
   // ========== 输入区域 ==========
@@ -826,9 +884,6 @@ const styles = StyleSheet.create({
     height: 40,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  toolIcon: {
-    fontSize: 22,
   },
 });
 

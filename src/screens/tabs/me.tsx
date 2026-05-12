@@ -24,37 +24,39 @@ import {
   Alert,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
 
 // 导入Store
 import { useUserStore } from '../../stores/useUserStore';
 import { useChatStore } from '../../stores/useChatStore';
 import { useContactStore } from '../../stores/useContactStore';
-import { useThemeStore, useCurrentColors, ThemeId, getAllThemes } from '../../stores/useThemeStore';
+import { useThemeStore, useCurrentColors } from '../../stores/useThemeStore';
 import { useAIModelStore, PRESET_MODELS } from '../../stores/useAIModelStore';
+import { ThemeId, getAllThemes } from '../../theme/colors';
 
-/** 菜单项配置 */
+/** 菜单项配置 - 使用 Ionicons 图标 */
 const menuItems = [
   {
     id: 'theme',
-    icon: '🎨',
+    icon: 'color-palette-outline' as const,
     title: '主题设置',
     screen: 'ThemeSettings' as const,
   },
   {
     id: 'ai-model',
-    icon: '🤖',
+    icon: 'hardware-chip-outline' as const,
     title: '大模型API设置',
     screen: 'AIModelSettings' as const,
   },
   {
     id: 'help',
-    icon: '💬',
+    icon: 'help-circle-outline' as const,
     title: '帮助与反馈',
     screen: 'Help' as const,
   },
   {
     id: 'about',
-    icon: 'ℹ️',
+    icon: 'information-circle-outline' as const,
     title: '关于我们',
     screen: 'About' as const,
   },
@@ -286,7 +288,7 @@ const ProfileScreen: React.FC = () => {
               activeOpacity={0.6}
             >
               {/* 图标 */}
-              <Text style={styles.menuIcon}>{item.icon}</Text>
+              <Ionicons name={item.icon} size={20} color={colors.primary} style={styles.menuIcon} />
 
               {/* 标题 */}
               <Text style={[styles.menuTitle, { color: colors.textPrimary }]}>{item.title}</Text>
@@ -307,7 +309,7 @@ const ProfileScreen: React.FC = () => {
               )}
 
               {/* 右箭头 */}
-              <Text style={[styles.menuArrow, { color: colors.textSecondary }]}>›</Text>
+              <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
             </TouchableOpacity>
           ))}
         </View>
@@ -344,7 +346,7 @@ const ProfileScreen: React.FC = () => {
             <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
               <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>选择主题</Text>
               <TouchableOpacity onPress={() => setShowThemePicker(false)}>
-                <Text style={[styles.modalClose, { color: colors.textSecondary }]}>✕</Text>
+                <Ionicons name="close" size={22} color={colors.textSecondary} style={styles.modalClose} />
               </TouchableOpacity>
             </View>
 
@@ -362,7 +364,7 @@ const ProfileScreen: React.FC = () => {
               >
                 {/* 主题图标和名称 */}
                 <View style={styles.themeOptionLeft}>
-                  <Text style={styles.themeIcon}>{theme.icon}</Text>
+                  <Ionicons name="color-palette-outline" size={24} color={colors.primary} style={styles.themeIcon} />
                   <View>
                     <Text style={[
                       styles.themeName,
@@ -379,10 +381,8 @@ const ProfileScreen: React.FC = () => {
 
                 {/* 当前选中标记 */}
                 {currentThemeId === theme.id && (
-                  <View style={[styles.checkMark, { backgroundColor: colors.primary }]}>
-                    <Text style={styles.checkMarkText}>✓</Text>
-                  </View>
-                )}
+                    <Ionicons name="checkmark-circle" size={22} color="#FFFFFF" style={styles.checkMark} />
+                  )}
 
                 {/* 颜色预览条 */}
                 <View style={styles.colorPreviewRow}>
@@ -408,9 +408,9 @@ const ProfileScreen: React.FC = () => {
           <ScrollView style={[styles.aiModalContent, { backgroundColor: colors.card }]}>
             {/* 标题 */}
             <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
-              <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>🤖 大模型API设置</Text>
+              <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>大模型API设置</Text>
               <TouchableOpacity onPress={() => setShowAISettings(false)}>
-                <Text style={[styles.modalClose, { color: colors.textSecondary }]}>✕</Text>
+                <Ionicons name="close" size={22} color={colors.textSecondary} style={styles.modalClose} />
               </TouchableOpacity>
             </View>
 
@@ -438,9 +438,7 @@ const ProfileScreen: React.FC = () => {
                     </Text>
                   </View>
                   {(aiConfig.model === config.model && !isCustomConfig) && (
-                    <View style={[styles.checkMark, { backgroundColor: colors.primary }]}>
-                      <Text style={styles.checkMarkText}>✓</Text>
-                    </View>
+                    <Ionicons name="checkmark-circle" size={22} color="#FFFFFF" style={styles.checkMark} />
                   )}
                 </TouchableOpacity>
               ))}
@@ -517,7 +515,7 @@ const ProfileScreen: React.FC = () => {
                 activeOpacity={0.7}
               >
                 <Text style={styles.testButtonText}>
-                  {isTestingConnection ? '⏳ 测试中...' : '🔗 测试连接'}
+                  {isTestingConnection ? '测试中...' : '测试连接'}
                 </Text>
               </TouchableOpacity>
 
@@ -543,7 +541,7 @@ const ProfileScreen: React.FC = () => {
               onPress={handleSaveCustomConfig}
               activeOpacity={0.8}
             >
-              <Text style={styles.saveButtonText}>💾 保存配置</Text>
+              <Text style={styles.saveButtonText}>保存配置</Text>
             </TouchableOpacity>
 
             {/* 底部提示 */}
@@ -646,7 +644,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: 0,
   },
   menuIcon: {
-    fontSize: 18,
+    width: 24,
+    textAlign: 'center',
     marginRight: 14,
   },
   menuTitle: {
@@ -663,9 +662,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     marginRight: 8,
     maxWidth: 120,
-  },
-  menuArrow: {
-    fontSize: 18,
   },
 
   // ========== 退出登录样式 ==========
@@ -713,8 +709,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   modalClose: {
-    fontSize: 20,
-    padding: 4,
   },
 
   // ========== 主题选项样式 ==========
@@ -731,7 +725,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   themeIcon: {
-    fontSize: 24,
+    width: 24,
     marginRight: 12,
   },
   themeName: {
@@ -743,17 +737,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   checkMark: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    justifyContent: 'center',
-    alignItems: 'center',
     marginLeft: 12,
-  },
-  checkMarkText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '700',
   },
   colorPreviewRow: {
     flexDirection: 'row',

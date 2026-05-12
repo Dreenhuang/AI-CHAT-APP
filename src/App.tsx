@@ -11,6 +11,7 @@
  * - 使用React Navigation的tabBarStyle自定义样式
  * - 通过LinearGradient实现渐变效果
  * - 使用平台检测确保iOS/Android/Web一致性
+ * - 登录流程: 支持游客模式和正式登录
  */
 
 import React from 'react';
@@ -30,10 +31,14 @@ import ProfileScreen from './screens/tabs/me';
 
 // 导入其他页面组件
 import ChatDetailScreen from './screens/chat/[id]';
+import LoginScreen from './screens/LoginScreen';
 
 // 导入主题配置 - 使用新的深空科技主题
 import { Colors } from './theme/colors';
 import { FontFamily } from './theme/typography';
+
+// 导入用户状态管理
+import { useUserStore } from './stores/useUserStore';
 
 // ============ 导航器创建 ============
 
@@ -191,33 +196,77 @@ const TabNavigator: React.FC = () => (
 
 // ============ 主应用组件 ============
 
+/**
+ * App主入口 - 根据登录状态动态渲染
+ *
+ * 逻辑说明：
+ * 1. 检查useUserStore.isAuthenticated状态
+ * 2. 已登录 → 直接显示MainTabs（主功能页面）
+ * 3. 未登录 → 显示Login页面（登录/注册）
+ * 4. 登录成功后自动跳转到MainTabs
+ */
 export default function App() {
+  // 获取用户登录状态（注意：UserStore使用的是isLoggedIn字段）
+  const isLoggedIn = useUserStore((state) => state.isLoggedIn);
+
+  console.log('[App] 渲染App组件, isLoggedIn:', isLoggedIn);
+
   return (
     <SafeAreaProvider>
       <NavigationContainer>
         <Stack.Navigator
           screenOptions={{
             headerShown: false,
-            // 页面转场动画 - 保持原生流畅感
             animation: 'slide_from_right',
           }}
         >
-          {/* 主Tab导航 */}
-          <Stack.Screen
-            name="MainTabs"
-            component={TabNavigator}
-          />
+          {isLoggedIn ? (
+            <>
+              {/* 已登录：直接显示主Tab导航 */}
+              <Stack.Screen
+                name="MainTabs"
+                component={TabNavigator}
+                options={{ gestureEnabled: false }} // 禁止返回到登录页
+              />
 
-          {/* 聊天详情页（子页面） */}
-          <Stack.Screen
-            name="ChatDetail"
-            component={ChatDetailScreen}
-            options={{
-              presentation: 'card',
-              gestureEnabled: true,
-              // 自定义返回动画
-            }}
-          />
+              {/* 聊天详情页（子页面） */}
+              <Stack.Screen
+                name="ChatDetail"
+                component={ChatDetailScreen}
+                options={{
+                  presentation: 'card',
+                  gestureEnabled: true,
+                }}
+              />
+            </>
+          ) : (
+            <>
+              {/* 未登录：显示登录页面 */}
+              <Stack.Screen
+                name="Login"
+                component={LoginScreen}
+                options={{
+                  gestureEnabled: false, // 隐藏返回按钮
+                }}
+              />
+
+              {/* 登录后的主Tab导航 */}
+              <Stack.Screen
+                name="MainTabs"
+                component={TabNavigator}
+              />
+
+              {/* 聊天详情页（子页面） */}
+              <Stack.Screen
+                name="ChatDetail"
+                component={ChatDetailScreen}
+                options={{
+                  presentation: 'card',
+                  gestureEnabled: true,
+                }}
+              />
+            </>
+          )}
         </Stack.Navigator>
       </NavigationContainer>
     </SafeAreaProvider>

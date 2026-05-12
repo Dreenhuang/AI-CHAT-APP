@@ -23,6 +23,7 @@ const topicsRoutes = require('./routes/topics');
 const groupsRoutes = require('./routes/groups');
 const soulsRoutes = require('./routes/souls');
 const debatesRoutes = require('./routes/debates');
+const aiRoutes = require('./routes/ai');         // AI生成接口（新增）
 
 // 导入服务模块
 const { setupWebSocket } = require('./services/websocketService');
@@ -45,6 +46,7 @@ app.use('/api/topics', topicsRoutes);   // 议题相关接口
 app.use('/api/groups', groupsRoutes);   // 群组相关接口
 app.use('/api/souls', soulsRoutes);     // Soul角色相关接口
 app.use('/api/debates', debatesRoutes); // 辩论记录相关接口
+app.use('/api/ai', aiRoutes);           // AI生成接口（新增）
 
 // 健康检查接口
 app.get('/api/health', (req, res) => {

@@ -6,206 +6,135 @@ module.exports = {
   ],
   theme: {
     extend: {
-      /* ============ 色彩系统扩展 ============ */
+      // ============ 色彩系统 - Deep Tech Theme v2.0 ============
       colors: {
-        /* 主品牌色系 - Deep Space Blue */
+        // 主品牌色
         primary: {
-          DEFAULT: '#0A84FF',
-          light: '#E8F4FD',
-          dark: '#0055D4',
-          50: '#E8F4FD',
-          100: '#C5E4F9',
-          200: '#8DC6F3',
-          300: '#55A8ED',
-          400: '#2D8AE7',
-          500: '#0A84FF',
-          600: '#0069D6',
-          700: '#0050A8',
-          800: '#00387A',
-          900: '#00204D',
+          DEFAULT: '#0EA5E9',           // 科技亮蓝
+          light: '#E0F2FE',             // 极浅蓝
+          dark: '#0369A1',              // 深蓝强调
         },
-        
-        /* 渐变色 */
+
+        // 渐变色
         gradient: {
-          start: '#0A84FF',
-          end: '#5E5CE6',
+          start: '#0A1929',            // 深空蓝
+          end: '#1E3A5F',              // 午夜蓝
         },
-        
-        /* 中性色系 - iOS风格 */
-        background: '#F2F2F7',
-        surface: '#FFFFFF',
-        
-        /* 文字颜色 */
+
+        // 消息气泡
+        'user-bubble': '#0EA5E9',       // 用户消息-科技蓝
+        'ai-bubble': '#FFFFFF',         // AI消息-纯白
+
+        // 背景系
+        background: '#F8FAFC',          // 极浅灰蓝背景
+        card: '#FFFFFF',                // 纯白卡片
+
+        // 文字层级
         text: {
-          primary: '#1C1C1E',
-          secondary: '#8E8E93',
-          tertiary: '#AEAEB2',
+          primary: '#0F172A',           // 深空黑-主文字
+          secondary: '#64748B',         // 科技灰-次要文字
         },
-        
-        /* 边框颜色 */
-        border: {
-          DEFAULT: 'rgba(60, 60, 67, 0.1)',
-          subtle: 'rgba(60, 60, 67, 0.06)',
-        },
-        
-        /* 语义化颜色 */
-        success: '#34C759',
-        warning: '#FF9500',
-        error: '#FF3B30',
-        info: '#0A84FF',
-        
-        /* 金属与科技色 */
-        metallic: {
-          silver: '#C7C7CC',
-          platinum: '#E5E5EA',
-        },
-        tech: {
-          gray: '#636366',
-          dark: '#48484A',
-        },
-        
-        /* 用户/AI气泡 */
-        'user-bubble': '#0A84FF',
-        'ai-bubble': '#FFFFFF',
+
+        // 边框与分割线
+        border: 'rgba(148, 163, 184, 0.25)', // 金属银半透明
+
+        // 语义色
+        error: '#DC2626',               // 错误红
+        success: '#059669',             // 成功绿
+        warning: '#D97706',             // 警告橙
+
+        // 装饰色系
+        'metallic-silver': '#94A3B8',   // 金属银
+        'tech-gray': '#64748B',         // 科技灰
       },
 
-      /* ============ 字体系统扩展 ============ */
+      // ============ 字体系统 ============
       fontFamily: {
-        sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif'],
-        mono: ['JetBrains Mono', 'SF Mono', 'Monaco', 'Consolas', 'monospace'],
+        // 主字体栈 - Inter优先
+        sans: [
+          'Inter',
+          '-apple-system',
+          'BlinkMacSystemFont',
+          '"Segoe UI"',
+          'Roboto',
+          '"Helvetica Neue"',
+          'Arial',
+          'sans-serif',
+        ],
+
+        // 等宽字体栈 - Roboto Mono优先
+        mono: [
+          '"Roboto Mono"',
+          '"SF Mono"',
+          'Consolas',
+          '"Liberation Mono"',
+          'Menlo',
+          'Courier',
+          'monospace',
+        ],
       },
-      
+
+      // ============ 字号阶梯（基于Typography规范）==========
       fontSize: {
-        /* 显示字体 */
-        display: ['34px', { lineHeight: '40px', fontWeight: '800', letterSpacing: '-1px' }],
-        
-        /* 标题层级 */
-        'heading-xl': ['28px', { lineHeight: '34px', fontWeight: '700', letterSpacing: '-0.5px' }],
-        'heading-lg': ['24px', { lineHeight: '30px', fontWeight: '700', letterSpacing: '-0.3px' }],
-        heading: ['20px', { lineHeight: '26px', fontWeight: '700', letterSpacing: '-0.4px' }],
-        'heading-sm': ['17px', { lineHeight: '23px', fontWeight: '600', letterSpacing: '-0.2px' }],
-        
-        /* 正文字体 */
-        body: ['16px', { lineHeight: '22px', fontWeight: '400' }],
-        'body-sm': ['15px', { lineHeight: '21px', fontWeight: '400' }],
-        
-        /* 小字 */
-        caption: ['12px', { lineHeight: '16px', fontWeight: '400' }],
-        small: ['11px', { lineHeight: '15px', fontWeight: '500' }],
-        tiny: ['10px', { lineHeight: '14px', fontWeight: '500' }],
-        
-        /* 特殊尺寸 */
-        nav: ['17px', { lineHeight: '22px', fontWeight: '700' }],
-        tab: ['10px', { lineHeight: '14px', fontWeight: '500' }],
+        // 显示文字
+        display: ['32px', { fontWeight: '700', lineHeight: '40px', letterSpacing: '-0.5px' }],
+
+        // 大标题
+        heading: ['24px', { fontWeight: '700', lineHeight: '32px' }],
+
+        // 导航栏标题
+        nav: ['17px', { fontWeight: '700', lineHeight: '22px' }],
+
+        // 页面标题
+        title: ['20px', { fontWeight: '600', lineHeight: '28px' }],
+
+        // 正文内容
+        body: ['16px', { fontWeight: '400', lineHeight: '24px' }],
+
+        // 次要正文
+        'body-secondary': ['15px', { fontWeight: '400', lineHeight: '22px' }],
+
+        // Tab栏文字
+        tab: ['10px', { fontWeight: '500', lineHeight: '14px' }],
+
+        // 辅助文字
+        caption: ['12px', { fontWeight: '400', lineHeight: '16px' }],
+
+        // 小号文字
+        small: ['11px', { fontWeight: '500', lineHeight: '15px' }],
+
+        // 超小文字
+        overline: ['10px', { fontWeight: '600', lineHeight: '14px', textTransform: 'uppercase' }],
       },
 
-      /* ============ 字重扩展 ============ */
-      fontWeight: {
-        light: '300',
-        normal: '400',
-        medium: '500',
-        semibold: '600',
-        bold: '700',
-        extrabold: '800',
-      },
-
-      /* ============ 间距系统扩展 (4px base) ============ */
+      // ============ 间距系统（基于4px网格）==========
       spacing: {
         'nav-bar': '44px',
         'tab-bar': '49px',
-        '18': '72px',
-        '22': '88px',
-        '26': '104px',
-        '30': '120px',
       },
 
-      /* ============ 圆角系统扩展 ============ */
+      // ============ 圆角系统 ==========
       borderRadius: {
-        'tech-sm': '6px',
-        'tech-md': '10px',
-        'tech-lg': '14px',
-        'tech-xl': '20px',
+        sm: '4px',     // 小圆角-按钮/标签
+        md: '8px',     // 中圆角-输入框
+        lg: '12px',    // 大圆角-卡片
+        xl: '16px',    // 超大圆角-对话框
+        full: '9999px', // 完全圆角-头像/徽章
       },
 
-      /* ============ 阴影系统扩展 ============ */
+      // ============ 阴影系统 ==========
       boxShadow: {
-        'tech-sm': '0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.06)',
-        'tech-md': '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05)',
-        'tech-lg': '0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.05)',
-        'tech-xl': '0 20px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04)',
-        'glow': '0 0 20px rgba(10, 132, 255, 0.15)',
-        'glow-lg': '0 0 40px rgba(10, 132, 255, 0.25)',
-        'glow-primary': '0 0 24px rgba(10, 132, 255, 0.3)',
-      },
+        // 低层阴影-菜单/按钮
+        sm: '0 1px 2px rgba(0, 0, 0, 0.04)',
 
-      /* ============ 动画与过渡扩展 ============ */
-      transitionDuration: {
-        'fast': '150ms',
-        'normal': '300ms',
-        'slow': '500ms',
-        'slower': '700ms',
-      },
-      
-      transitionTimingFunction: {
-        'spring': 'cubic-bezier(0.34, 1.56, 0.64, 1)',
-        'bounce-in': 'cubic-bezier(0.68, -0.55, 0.265, 1.55)',
-      },
+        // 中层阴影-卡片/下拉框
+        DEFAULT: '0 2px 8px rgba(0, 0, 0, 0.06)',
 
-      /* ============ 背景渐变扩展 ============ */
-      backgroundImage: {
-        'gradient-primary': 'linear-gradient(135deg, #0A84FF 0%, #5E5CE6 100%)',
-        'gradient-primary-hover': 'linear-gradient(135deg, #339BFF 0%, #7A6EE8 100%)',
-        'gradient-dark': 'linear-gradient(135deg, #1C1C21 0%, #2C2C3E 100%)',
-        'gradient-subtle': 'linear-gradient(180deg, rgba(10, 132, 255, 0.03) 0%, transparent 100%)',
-        'gradient-shimmer': 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.4) 50%, transparent 100%)',
-        'glass': 'linear-gradient(135deg, rgba(255,255,255,0.72) 0%, rgba(255,255,255,0.58) 100%)',
-      },
+        // 高层阴影-模态框/抽屉
+        lg: '0 4px 16px rgba(0, 0, 0, 0.12)',
 
-      /* ============ 模糊效果扩展 ============ */
-      backdropBlur: {
-        'glass': '20px',
-      },
-
-      /* ============ 动画关键帧扩展 ============ */
-      keyframes: {
-        'fade-in-up': {
-          '0%': { opacity: '0', transform: 'translateY(20px)' },
-          '100%': { opacity: '1', transform: 'translateY(0)' },
-        },
-        'fade-in': {
-          '0%': { opacity: '0' },
-          '100%': { opacity: '1' },
-        },
-        'scale-in': {
-          '0%': { opacity: '0', transform: 'scale(0.95)' },
-          '100%': { opacity: '1', transform: 'scale(1)' },
-        },
-        'slide-in-left': {
-          '0%': { opacity: '0', transform: 'translateX(-30px)' },
-          '100%': { opacity: '1', transform: 'translateX(0)' },
-        },
-        'pulse-glow': {
-          '0%, 100%': { boxShadow: '0 0 0 0 rgba(10, 132, 255, 0.4)' },
-          '50%': { boxShadow: '0 0 0 15px rgba(10, 132, 255, 0)' },
-        },
-        shimmer: {
-          '0%': { backgroundPosition: '-200% center' },
-          '100%': { backgroundPosition: '200% center' },
-        },
-        float: {
-          '0%, 100%': { transform: 'translateY(0)' },
-          '50%': { transform: 'translateY(-8px)' },
-        },
-      },
-      
-      animation: {
-        'fade-in-up': 'fade-in-up 0.3s ease-out forwards',
-        'fade-in': 'fade-in 0.3s ease-out forwards',
-        'scale-in': 'scale-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards',
-        'slide-in-left': 'slide-in-left 0.3s ease-out forwards',
-        'pulse-glow': 'pulse-glow 2s ease-in-out infinite',
-        shimmer: 'shimmer 1.5s ease-in-out infinite',
-        float: 'float 3s ease-in-out infinite',
+        // 导航栏专用阴影
+        nav: '0 4px 8px rgba(0, 0, 0, 0.15)',
       },
     },
   },

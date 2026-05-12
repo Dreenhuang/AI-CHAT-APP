@@ -26,6 +26,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
 
 // 导入组件
 import ContactItem from '../../components/ContactItem';
@@ -35,8 +36,13 @@ import FABButton from '../../components/FABButton';
 import { useContactStore } from '../../stores/useContactStore';
 import { Soul, SoulPersonality } from '../../types';
 
+// 导入预设数据 - 19种讨论模式和35个Soul角色
+import { DISCUSSION_MODES, getAllModes, getModeCategories } from '../../data/discussionModes';
+import { soulPresets, getAllSouls } from '../../data/soulPresets';
+
 // 导入主题
 import { Colors } from '../../theme/colors';
+import { useCurrentColors } from '../../stores/useThemeStore';
 
 /** 分段数据类型 */
 interface SectionData {
@@ -67,6 +73,9 @@ const personalityOptions: Array<{ value: SoulPersonality; label: string; desc: s
 const ContactsScreen: React.FC = () => {
   const navigation = useNavigation();
 
+  // 获取动态主题颜色
+  const colors = useCurrentColors();
+
   // Store状态
   const { groups, souls, addSoul } = useContactStore();
 
@@ -86,46 +95,76 @@ const ContactsScreen: React.FC = () => {
 
   /**
    * 构建分段数据（群聊在前，好友在后）
+   *
+   * 数据来源：
+   * - 群聊 = 19种预设讨论模式（每种模式=一个辩论群）
+   * - 好友 = 35个预设Soul角色（每个角色=一个AI好友）
    */
   const sections: SectionData[] = useMemo(() => {
-    // 筛选群组
-    const filteredGroups = groups.filter(group =>
-      group.name.toLowerCase().includes(searchText.toLowerCase())
-    ).map(group => ({
-      id: group.id,
+    // ========== 第一段：群聊（19种讨论模式） ==========
+    const allModes = getAllModes(); // 获取所有19种讨论模式
+    
+    // 根据搜索文本筛选讨论模式
+    const filteredModes = allModes.filter(mode =>
+      mode.name.toLowerCase().includes(searchText.toLowerCase()) ||
+      mode.description.toLowerCase().includes(searchText.toLowerCase()) ||
+      mode.category.toLowerCase().includes(searchText.toLowerCase())
+    ).map(mode => ({
+      id: mode.id,
       type: 'group' as const,
-      item: group,
+      item: {
+        ...mode,
+        // 将讨论模式转换为群组格式
+        name: mode.name,
+        description: mode.description,
+        memberCount: mode.minRoles + '-' + mode.maxRoles, // 显示角色数量范围
+        category: mode.category,
+        icon: mode.icon || '💬',
+        // 使用micges风格SVG头像（适合群组图标）
+        avatar: `https://api.dicebear.com/7.x/micah/svg?seed=group_${mode.id}&backgroundColor=transparent`,
+      },
     }));
 
-    // 筛选好友
-    const filteredSouls = souls.filter(soul =>
-      soul.name.toLowerCase().includes(searchText.toLowerCase())
+    // ========== 第二段：好友（35个Soul角色） ==========
+    const allSouls = getAllSouls(); // 获取所有35个Soul角色
+
+    // 根据搜索文本筛选Soul角色
+    const filteredSouls = allSouls.filter(soul =>
+      soul.name.toLowerCase().includes(searchText.toLowerCase()) ||
+      soul.description.toLowerCase().includes(searchText.toLowerCase()) ||
+      soul.category.toLowerCase().includes(searchText.toLowerCase())
     ).map(soul => ({
       id: soul.id,
       type: 'soul' as const,
-      item: soul,
+      item: {
+        ...soul,
+        // 将Soul角色转换为好友格式
+        name: soul.name,
+        description: soul.description,
+        personality: soul.character?.personality || '',
+        strengths: soul.strengths || [],
+        suitableFor: soul.suitableFor || [],
+        // 使用DiceBear lorelei风格SVG头像（更精致的插画风格）
+        avatar: `https://api.dicebear.com/7.x/lorelei/svg?seed=${soul.id}&backgroundColor=transparent`,
+      },
     }));
 
     const result: SectionData[] = [];
 
-    // 群聊段（如果有数据）
-    if (filteredGroups.length > 0) {
-      result.push({
-        title: '群聊',
-        data: filteredGroups,
-      });
-    }
+    // 群聊段（始终显示，即使为空也显示引导）
+    result.push({
+      title: '群聊', // 讨论模式群组
+      data: filteredModes,
+    });
 
-    // 好友段（如果有数据）
-    if (filteredSouls.length > 0) {
-      result.push({
-        title: '好友',
-        data: filteredSouls,
-      });
-    }
+    // 好友段（始终显示）
+    result.push({
+      title: '好友', // Soul AI角色
+      data: filteredSouls,
+    });
 
     return result;
-  }, [groups, souls, searchText]);
+  }, [searchText]); // 只依赖searchText，因为使用的是预设数据
 
   /**
    * 处理群组点击 - 进入群组聊天
@@ -159,7 +198,7 @@ const ContactsScreen: React.FC = () => {
     {
       id: 'create_group',
       label: '新建群组',
-      icon: '👥',
+      icon: 'people-outline' as const,
       onPress: () => {
         setShowFABMenu(false);
         console.log('新建群组');
@@ -169,7 +208,7 @@ const ContactsScreen: React.FC = () => {
     {
       id: 'add_friend',
       label: '添加好友',
-      icon: '👤',
+      icon: 'person-add-outline' as const,
       onPress: () => {
         setShowFABMenu(false);
         // 打开添加角色Modal
@@ -286,7 +325,7 @@ const ContactsScreen: React.FC = () => {
    */
   const renderEmptyComponent = () => (
     <View style={styles.emptyContainer}>
-      <Text style={styles.emptyIcon}>{showSearch ? '🔍' : '📋'}</Text>
+      <Ionicons name={showSearch ? "search-outline" : "people-outline"} size={48} color={Colors.textSecondary} style={{ marginBottom: 12 }} />
       <Text style={styles.emptyTitle}>
         {showSearch ? '未找到联系人' : '暂无联系人'}
       </Text>
@@ -297,20 +336,20 @@ const ContactsScreen: React.FC = () => {
   );
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* 状态栏 */}
-      <StatusBar barStyle="light-content" backgroundColor={Colors.primary} />
+      <StatusBar barStyle="light-content" backgroundColor={colors.primary} />
 
       {/* 导航栏 */}
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: colors.primary }]}>
         <Text style={styles.headerTitle}>通讯录</Text>
         <TouchableOpacity
-          onPress={() => setShowSearch(!showSearch)}
-          activeOpacity={0.7}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        >
-          <Text style={styles.searchIcon}>🔍</Text>
-        </TouchableOpacity>
+            onPress={() => setShowSearch(!showSearch)}
+            activeOpacity={0.7}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Ionicons name="search" size={22} color="#FFFFFF" />
+          </TouchableOpacity>
       </View>
 
       {/* 搜索框（点击显示） */}
@@ -342,7 +381,7 @@ const ContactsScreen: React.FC = () => {
 
       {/* FAB悬浮按钮 */}
       <FABButton
-        icon="+"
+        icon="add"
         showMenu={showFABMenu}
         menuItems={fabMenuItems}
         onPress={() => setShowFABMenu(!showFABMenu)}
@@ -361,11 +400,11 @@ const ContactsScreen: React.FC = () => {
             <View style={styles.addModalHeader}>
               <Text style={styles.addModalTitle}>添加新角色</Text>
               <TouchableOpacity
-                onPress={handleCancelAdd}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              >
-                <Text style={styles.addModalClose}>✕</Text>
-              </TouchableOpacity>
+                  onPress={handleCancelAdd}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                  <Ionicons name="close" size={22} color={Colors.textSecondary} />
+                </TouchableOpacity>
             </View>
 
             {/* 表单内容（可滚动） */}
@@ -417,7 +456,7 @@ const ContactsScreen: React.FC = () => {
                   <Text style={styles.personalityValue}>
                     {personalityOptions.find(p => p.value === formPersonality)?.label || '选择性格'}
                   </Text>
-                  <Text style={styles.personalityArrow}>▼</Text>
+                  <Ionicons name="chevron-down" size={14} color={Colors.textSecondary} />
                 </TouchableOpacity>
               </View>
 
@@ -465,7 +504,7 @@ const ContactsScreen: React.FC = () => {
                       </Text>
                       {selectedAvatarIndex === index && (
                         <View style={styles.avatarCheckMark}>
-                          <Text style={styles.avatarCheckText}>✓</Text>
+                          <Ionicons name="checkmark" size={12} color="#FFFFFF" />
                         </View>
                       )}
                     </TouchableOpacity>
@@ -536,7 +575,7 @@ const ContactsScreen: React.FC = () => {
             <View style={styles.pickerHeader}>
               <Text style={styles.pickerTitle}>选择性格类型</Text>
               <TouchableOpacity onPress={() => setShowPersonalityPicker(false)}>
-                <Text style={styles.pickerClose}>✕</Text>
+                <Ionicons name="close" size={22} color={Colors.textSecondary} />
               </TouchableOpacity>
             </View>
             {personalityOptions.map((option) => (
@@ -562,7 +601,7 @@ const ContactsScreen: React.FC = () => {
                   <Text style={styles.pickerItemDesc}>{option.desc}</Text>
                 </View>
                 {formPersonality === option.value && (
-                  <Text style={styles.pickerCheckIcon}>✓</Text>
+                  <Ionicons name="checkmark-circle" size={22} color={Colors.primary} />
                 )}
               </TouchableOpacity>
             ))}
@@ -592,9 +631,6 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '700',
     color: '#FFFFFF',
-  },
-  searchIcon: {
-    fontSize: 18,
   },
 
   // 搜索框样式
@@ -633,10 +669,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingTop: 100,
-  },
-  emptyIcon: {
-    fontSize: 48,
-    marginBottom: 12,
   },
   emptyTitle: {
     fontSize: 16,
@@ -679,11 +711,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     color: Colors.textPrimary,
-  },
-  addModalClose: {
-    fontSize: 20,
-    color: Colors.textSecondary,
-    padding: 4,
   },
 
   // 表单样式
@@ -740,10 +767,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: Colors.textPrimary,
   },
-  personalityArrow: {
-    fontSize: 12,
-    color: Colors.textSecondary,
-  },
 
   // 头像网格样式
   avatarGrid: {
@@ -790,11 +813,6 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  avatarCheckText: {
-    color: '#FFFFFF',
-    fontSize: 11,
-    fontWeight: '700',
   },
 
   // 预览卡片样式
@@ -910,10 +928,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: Colors.textPrimary,
   },
-  pickerClose: {
-    fontSize: 18,
-    color: Colors.textSecondary,
-  },
   pickerItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -941,11 +955,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: Colors.textSecondary,
     marginTop: 2,
-  },
-  pickerCheckIcon: {
-    fontSize: 16,
-    color: Colors.primary,
-    fontWeight: '700',
   },
 });
 

@@ -196,33 +196,42 @@ class NotificationService {
   }): Promise<void> {
     const { hour, minute } = this.settings;
 
-    await Notifications.cancelAllScheduledNotificationsAsync();
-
-    await Notifications.scheduleNotificationAsync({
-      content: {
-        title: '今日精选话题',
-        subtitle: topic.category ? `分类: ${topic.category}` : undefined,
-        body: topic.title,
-        data: {
-          topicId: topic.id,
-          type: 'daily_topic',
-          title: topic.title,
-          screen: 'ChatDetail',
-        },
-        sound: this.settings.soundEnabled,
-        priority: Notifications.AndroidNotificationPriority.HIGH,
-        color: '#0EA5E9',
-        badge: 1,
-      },
-      trigger: {
-        type: Notifications.SchedulableTriggerInputTypes.DAILY,
-        hour,
-        minute,
-      },
-    });
-
     if (Platform.OS === 'web') {
       this.setupWebCheckTimer(hour, minute, topic);
+      return;
+    }
+
+    try {
+      await Notifications.cancelAllScheduledNotificationsAsync();
+    } catch (error) {
+      console.warn('[NotificationService] 取消通知失败:', error);
+    }
+
+    try {
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: '今日精选话题',
+          subtitle: topic.category ? `分类: ${topic.category}` : undefined,
+          body: topic.title,
+          data: {
+            topicId: topic.id,
+            type: 'daily_topic',
+            title: topic.title,
+            screen: 'ChatDetail',
+          },
+          sound: this.settings.soundEnabled,
+          priority: Notifications.AndroidNotificationPriority.HIGH,
+          color: '#0EA5E9',
+          badge: 1,
+        },
+        trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.DAILY,
+          hour,
+          minute,
+        },
+      });
+    } catch (error) {
+      console.warn('[NotificationService] 调度通知失败:', error);
     }
   }
 

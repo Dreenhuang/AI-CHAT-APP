@@ -259,36 +259,42 @@ const DiscoverScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      {/* Status bar */}
-      <StatusBar 
-        barStyle="light-content" 
+      {/* Status bar - 浅蓝色适配 */}
+      <StatusBar
+        barStyle="light-content"
         backgroundColor={Colors.primary}
         translucent={false}
       />
 
-      {/* ==================== Header ==================== */}
-      <View style={styles.headerContainer}>
-        <View style={styles.headerGradient}>
-          <Text style={styles.headerTitle}>发现</Text>
-          <Text style={styles.headerSubtitle}>探索热门议题，开启精彩讨论</Text>
-        </View>
+      {/* ==================== Header - 浅蓝色统一风格（无副标题） ==================== */}
+      <View style={[styles.headerContainer, { backgroundColor: Colors.primary }]}>
+        {/* 标题 */}
+        <Text style={styles.headerTitle}>发现</Text>
       </View>
 
-      {/* ==================== Filter Bar ==================== */}
-      <TouchableOpacity
-        style={styles.filterBar}
-        onPress={() => setShowFilter(true)}
-        activeOpacity={0.7}
-      >
-        <Ionicons name="filter" size={16} color={Colors.textSecondary} style={styles.filterIcon} />
-        <Text style={styles.filterText}>
-          分类：{selectedCategory}
-        </Text>
-        <View style={styles.filterBadge}>
-          <Text style={styles.filterBadgeText}>{topics.length}</Text>
+      {/* ==================== Filter Bar - 专业布局设计 ==================== */}
+      <View style={styles.filterContainer}>
+        {/* 左侧：分类选择器 */}
+        <TouchableOpacity
+          style={styles.filterButton}
+          onPress={() => setShowFilter(true)}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="options" size={18} color={Colors.primary} style={styles.filterIcon} />
+          <Text style={styles.filterLabel}>分类</Text>
+          <Text style={styles.filterValue}>{selectedCategory}</Text>
+          <Ionicons name="chevron-down" size={14} color={Colors.textSecondary} />
+        </TouchableOpacity>
+
+        {/* 右侧：计数徽章 */}
+        <View style={styles.countContainer}>
+          <Text style={styles.countLabel}>共</Text>
+          <View style={styles.countBadge}>
+            <Text style={styles.countNumber}>{topics.length}</Text>
+          </View>
+          <Text style={styles.countLabel}>个议题</Text>
         </View>
-        <Ionicons name="chevron-down" size={14} color={Colors.textSecondary} style={styles.filterChevron} />
-      </TouchableOpacity>
+      </View>
 
       {/* ==================== Category Selection Modal ==================== */}
       <Modal
@@ -398,77 +404,90 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
   },
 
-  // ========== Header Styles ==========
+  // ========== Header Styles - 统一浅蓝色风格（无副标题） ==========
   headerContainer: {
-    paddingTop: 12,
-    paddingHorizontal: 20,
-    paddingBottom: 20,
-    backgroundColor: Colors.primary,
-  },
-
-  headerGradient: {
-    // Gradient effect would be applied here in advanced implementation
+    height: 44,                              // 统一高度
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
   },
 
   headerTitle: {
-    fontSize: 26,
-    fontWeight: '800',
-    color: '#FFFFFF',
+    fontSize: 17,                            // 统一标题字号
+    fontWeight: '700' as const,               // Bold
+    color: '#FFFFFF',                        // 白色文字
     fontFamily: 'Inter',
-    letterSpacing: -0.5,
-    marginBottom: 4,
+    letterSpacing: -0.5,                      // 紧凑字距
   },
 
-  headerSubtitle: {
-    fontSize: 14,
-    fontWeight: '400',
-    color: 'rgba(255, 255, 255, 0.85)',
-    fontFamily: 'Inter',
-  },
-
-  // ========== Filter Bar Styles ==========
-  filterBar: {
+  // ========== Filter Bar Styles - 专业布局设计 ==========
+  filterContainer: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingVertical: 12,
     backgroundColor: '#FFFFFF',
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: Colors.border,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
+  },
+
+  /** 分类选择按钮 */
+  filterButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
 
   filterIcon: {
-    marginRight: 8,
+    marginRight: 6,
   },
 
-  filterText: {
-    flex: 1,
-    fontSize: 15,
-    fontWeight: '500',
-    color: Colors.textPrimary,
-    fontFamily: 'Inter',
+  filterLabel: {
+    fontSize: 13,
+    color: Colors.textSecondary,
+    marginRight: 4,
   },
 
-  filterBadge: {
+  filterValue: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+    color: Colors.primary,
+    marginRight: 4,
+  },
+
+  /** 计数容器 */
+  countContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+
+  countLabel: {
+    fontSize: 13,
+    color: Colors.textSecondary,
+  },
+
+  countBadge: {
     backgroundColor: Colors.primary,
-    borderRadius: 12,
+    borderRadius: 10,
     minWidth: 24,
     height: 24,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 7,
-    marginRight: 6,
+    paddingHorizontal: 8,
+    marginHorizontal: 4,
   },
 
-  filterBadgeText: {
-    fontSize: 12,
-    fontWeight: '600',
+  countNumber: {
+    fontSize: 13,
+    fontWeight: '700' as const,
     color: '#FFFFFF',
-    fontFamily: 'Inter',
-  },
-
-  filterChevron: {
-    marginLeft: 2,
   },
 
   // ========== Modal Styles ==========

@@ -116,8 +116,8 @@ const styles = StyleSheet.create({
   // ========== 容器布局 ==========
   container: {
     marginVertical: 4,
-    paddingHorizontal: 12,
-    maxWidth: '75%',
+    paddingHorizontal: 8,
+    maxWidth: '88%',
   },
   rowLeft: {
     alignSelf: 'flex-start',

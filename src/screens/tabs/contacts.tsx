@@ -27,6 +27,7 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 
 // 导入组件
 import ContactItem from '../../components/ContactItem';
@@ -39,6 +40,7 @@ import { Soul, SoulPersonality } from '../../types';
 // 导入预设数据 - 19种讨论模式和35个Soul角色
 import { DISCUSSION_MODES, getAllModes, getModeCategories } from '../../data/discussionModes';
 import { soulPresets, getAllSouls } from '../../data/soulPresets';
+import { memoAvatarUrls, getMemoAvatarUrl } from '../../data/memoAvatars';
 
 // 导入主题
 import { Colors } from '../../theme/colors';
@@ -51,14 +53,13 @@ interface SectionData {
 }
 
 /** 头像选项配置 */
-const avatarOptions = [
-  { seed: 'adventurer', label: '冒险者', style: 'adventurer' },
-  { seed: 'bottts', label: '机器人', style: 'bottts' },
-  { seed: 'pixel', label: '像素风', style: 'pixel-art' },
-  { seed: 'lorelei', label: '精致', style: 'lorelei' },
-  { seed: 'notionists', label: '简约', style: 'notionists' },
-  { seed: 'fun-emoji', label: '活泼', style: 'fun-emoji' },
-];
+/** 头像选项 - 使用Memo系列35个头像 */
+const avatarOptions = memoAvatarUrls.map((url, index) => ({
+  seed: `memo_${index + 1}`,
+  label: `头像${index + 1}`,
+  style: 'memo',
+  url: url, // 直接存储完整URL
+}));
 
 /** 性格选项 */
 const personalityOptions: Array<{ value: SoulPersonality; label: string; desc: string }> = [
@@ -77,7 +78,7 @@ const ContactsScreen: React.FC = () => {
   const colors = useCurrentColors();
 
   // Store状态
-  const { groups, souls, addSoul } = useContactStore();
+  const { groups, souls, addSoul, setGroups } = useContactStore();
 
   // 本地状态
   const [showSearch, setShowSearch] = useState(false);
@@ -92,6 +93,11 @@ const ContactsScreen: React.FC = () => {
   const [formPersonality, setFormPersonality] = useState<SoulPersonality>('moderate');
   const [selectedAvatarIndex, setSelectedAvatarIndex] = useState(0);
   const [showPersonalityPicker, setShowPersonalityPicker] = useState(false);
+
+  // ========== 创建群组Modal相关状态 ==========
+  const [showCreateGroupModal, setShowCreateGroupModal] = useState(false);
+  const [groupName, setGroupName] = useState('');
+  const [groupDescription, setGroupDescription] = useState('');
 
   /**
    * 构建分段数据（群聊在前，好友在后）
@@ -109,7 +115,7 @@ const ContactsScreen: React.FC = () => {
       mode.name.toLowerCase().includes(searchText.toLowerCase()) ||
       mode.description.toLowerCase().includes(searchText.toLowerCase()) ||
       mode.category.toLowerCase().includes(searchText.toLowerCase())
-    ).map(mode => ({
+    ).map((mode, modeIndex) => ({
       id: mode.id,
       type: 'group' as const,
       item: {
@@ -120,8 +126,8 @@ const ContactsScreen: React.FC = () => {
         memberCount: mode.minRoles + '-' + mode.maxRoles, // 显示角色数量范围
         category: mode.category,
         icon: mode.icon || '💬',
-        // 使用micges风格SVG头像（适合群组图标）
-        avatar: `https://api.dicebear.com/7.x/micah/svg?seed=group_${mode.id}&backgroundColor=transparent`,
+        // 仅使用alohe/avatars的Memoji系列PNG头像
+        avatar: memoAvatarUrls[modeIndex % 35],
       },
     }));
 
@@ -133,7 +139,7 @@ const ContactsScreen: React.FC = () => {
       soul.name.toLowerCase().includes(searchText.toLowerCase()) ||
       soul.description.toLowerCase().includes(searchText.toLowerCase()) ||
       soul.category.toLowerCase().includes(searchText.toLowerCase())
-    ).map(soul => ({
+    ).map((soul, index) => ({
       id: soul.id,
       type: 'soul' as const,
       item: {
@@ -144,8 +150,8 @@ const ContactsScreen: React.FC = () => {
         personality: soul.character?.personality || '',
         strengths: soul.strengths || [],
         suitableFor: soul.suitableFor || [],
-        // 使用DiceBear lorelei风格SVG头像（更精致的插画风格）
-        avatar: `https://api.dicebear.com/7.x/lorelei/svg?seed=${soul.id}&backgroundColor=transparent`,
+        // 使用alohe/avatars的Memoji系列PNG头像（35个角色对应35个头像）
+        avatar: memoAvatarUrls[index % 35],
       },
     }));
 
@@ -197,12 +203,13 @@ const ContactsScreen: React.FC = () => {
   const fabMenuItems = [
     {
       id: 'create_group',
-      label: '新建群组',
+      label: '建立讨论群组',
       icon: 'people-outline' as const,
       onPress: () => {
         setShowFABMenu(false);
-        console.log('新建群组');
-        Alert.alert('提示', '群组功能开发中，敬请期待！');
+        setGroupName('');
+        setGroupDescription('');
+        setShowCreateGroupModal(true);
       },
     },
     {
@@ -211,7 +218,6 @@ const ContactsScreen: React.FC = () => {
       icon: 'person-add-outline' as const,
       onPress: () => {
         setShowFABMenu(false);
-        // 打开添加角色Modal
         resetForm();
         setShowAddModal(true);
       },
@@ -268,7 +274,7 @@ const ContactsScreen: React.FC = () => {
     const newSoul: Soul = {
       id: newId,
       name: formName.trim(),
-      avatar: `https://api.dicebear.com/7.x/${selectedAvatar.style}/svg?seed=${newId}&backgroundColor=transparent`,
+      avatar: selectedAvatar?.url || memoAvatarUrls[0],
       personality: formPersonality,
       description: formDescription.trim() || `这是一个自定义的AI辩论角色：${formName.trim()}`,
       specialty: formSpecialty.trim(),
@@ -298,6 +304,33 @@ const ContactsScreen: React.FC = () => {
   const handleCancelAdd = () => {
     setShowAddModal(false);
     resetForm();
+  };
+
+  /**
+   * 创建群组
+   */
+  const handleCreateGroup = () => {
+    if (!groupName.trim()) return;
+
+    const newGroupId = `custom_group_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const avatarIndex = Math.floor(Math.random() * 35);
+    const newGroup = {
+      id: newGroupId,
+      name: groupName.trim(),
+      avatar: memoAvatarUrls[avatarIndex],
+      description: groupDescription.trim() || `欢迎加入讨论群`,
+      memberCount: 1,
+      createdAt: new Date().toISOString(),
+    };
+
+    const updatedGroups = [newGroup, ...groups];
+    setGroups(updatedGroups);
+
+    setShowCreateGroupModal(false);
+    setGroupName('');
+    setGroupDescription('');
+
+    Alert.alert('成功', `已创建讨论群组「${newGroup.name}」！`);
   };
 
   /**
@@ -337,19 +370,20 @@ const ContactsScreen: React.FC = () => {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* 状态栏 */}
+      {/* 状态栏 - 浅蓝色适配 */}
       <StatusBar barStyle="light-content" backgroundColor={colors.primary} />
 
-      {/* 导航栏 */}
+      {/* 导航栏 - 浅蓝色统一风格 */}
       <View style={[styles.header, { backgroundColor: colors.primary }]}>
         <Text style={styles.headerTitle}>通讯录</Text>
         <TouchableOpacity
-            onPress={() => setShowSearch(!showSearch)}
-            activeOpacity={0.7}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <Ionicons name="search" size={22} color="#FFFFFF" />
-          </TouchableOpacity>
+          onPress={() => setShowSearch(!showSearch)}
+          activeOpacity={0.7}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          style={styles.searchIconButton}
+        >
+          <Ionicons name="search" size={22} color="#FFFFFF" />
+        </TouchableOpacity>
       </View>
 
       {/* 搜索框（点击显示） */}
@@ -491,9 +525,7 @@ const ContactsScreen: React.FC = () => {
                       activeOpacity={0.7}
                     >
                       <Image
-                        source={{
-                          uri: `https://api.dicebear.com/7.x/${avatar.style}/svg?seed=preview_${index}&backgroundColor=transparent`
-                        }}
+                        source={{ uri: avatar.url }}
                         style={styles.avatarPreview}
                       />
                       <Text style={[
@@ -517,9 +549,7 @@ const ContactsScreen: React.FC = () => {
                 <Text style={styles.previewTitle}>角色预览</Text>
                 <View style={styles.previewContent}>
                   <Image
-                    source={{
-                      uri: `https://api.dicebear.com/7.x/${avatarOptions[selectedAvatarIndex].style}/svg?seed=preview&backgroundColor=transparent`
-                    }}
+                    source={{ uri: avatarOptions[selectedAvatarIndex]?.url }}
                     style={styles.previewAvatar}
                   />
                   <View style={styles.previewInfo}>
@@ -608,6 +638,71 @@ const ContactsScreen: React.FC = () => {
           </View>
         </TouchableOpacity>
       </Modal>
+
+      {/* ========== 创建群组Modal ========== */}
+      <Modal
+        visible={showCreateGroupModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowCreateGroupModal(false)}
+      >
+        <TouchableOpacity
+          style={styles.createGroupOverlay}
+          activeOpacity={1}
+          onPress={() => setShowCreateGroupModal(false)}
+        >
+          <TouchableOpacity activeOpacity={1} style={styles.createGroupContent}>
+            <View style={styles.createGroupHeader}>
+              <Text style={styles.createGroupTitle}>建立讨论群组</Text>
+              <TouchableOpacity
+                onPress={() => setShowCreateGroupModal(false)}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Ionicons name="close" size={22} color={Colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.createGroupForm}>
+              <View style={styles.createGroupField}>
+                <Text style={styles.createGroupLabel}>群组名称<Text style={styles.requiredStar}>*</Text></Text>
+                <TextInput
+                  style={styles.createGroupInput}
+                  value={groupName}
+                  onChangeText={setGroupName}
+                  placeholder="请输入群组名称"
+                  placeholderTextColor="#999999"
+                  maxLength={20}
+                />
+              </View>
+
+              <View style={styles.createGroupField}>
+                <Text style={styles.createGroupLabel}>群组描述</Text>
+                <TextInput
+                  style={[styles.createGroupInput, styles.createGroupTextArea]}
+                  value={groupDescription}
+                  onChangeText={setGroupDescription}
+                  placeholder="简单介绍一下这个群组的话题方向..."
+                  placeholderTextColor="#999999"
+                  multiline
+                  numberOfLines={3}
+                  maxLength={100}
+                  textAlignVertical="top"
+                />
+              </View>
+            </ScrollView>
+
+            <View style={styles.createGroupFooter}>
+              <TouchableOpacity
+                style={[styles.createGroupButton, !groupName.trim() && styles.createGroupButtonDisabled]}
+                onPress={handleCreateGroup}
+                disabled={!groupName.trim()}
+              >
+                <Text style={styles.createGroupButtonText}>创建群组</Text>
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 };
@@ -618,10 +713,9 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
   },
 
-  // 导航栏样式
+  // 导航栏样式 - 统一浅蓝色风格
   header: {
-    height: 44,
-    backgroundColor: Colors.primary,
+    height: 44,                              // 统一高度
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -632,21 +726,46 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#FFFFFF',
   },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  searchIconButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
 
   // 搜索框样式
   searchContainer: {
     padding: 12,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: Colors.border,
+    backgroundColor: '#F8FAFC',                   // 极浅灰蓝背景
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',                  // 柔和边框
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
   searchInput: {
-    height: 36,
-    backgroundColor: '#F5F5F5',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    fontSize: 14,
+    height: 44,                                  // 标准高度
+    backgroundColor: '#FFFFFF',                   // 纯白背景
+    borderRadius: 12,                             // 中等圆角
+    paddingHorizontal: 14,
+    fontSize: 15,                                 // 统一字号
     color: Colors.textPrimary,
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',                      // 柔和边框
+    shadowColor: '#0EA5E9',                      // 浅蓝色阴影（品牌色）
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
   },
 
   // 分段标题样式
@@ -955,6 +1074,80 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: Colors.textSecondary,
     marginTop: 2,
+  },
+
+  // 创建群组Modal样式
+  createGroupOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  createGroupContent: {
+    width: '85%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    maxHeight: '70%',
+  },
+  createGroupHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  createGroupTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: Colors.textPrimary,
+  },
+  createGroupForm: {
+    maxHeight: 300,
+  },
+  createGroupField: {
+    marginBottom: 16,
+  },
+  createGroupLabel: {
+    fontSize: 14,
+    color: Colors.textPrimary,
+    marginBottom: 8,
+    fontWeight: '500',
+  },
+  requiredStar: {
+    color: '#FF3B30',
+  },
+  createGroupInput: {
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 15,
+    color: Colors.textPrimary,
+    backgroundColor: '#FAFAFA',
+  },
+  createGroupTextArea: {
+    height: 80,
+    textAlignVertical: 'top',
+  },
+  createGroupFooter: {
+    marginTop: 16,
+  },
+  createGroupButton: {
+    backgroundColor: Colors.primary,
+    paddingVertical: 14,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  createGroupButtonDisabled: {
+    backgroundColor: Colors.textSecondary,
+    opacity: 0.5,
+  },
+  createGroupButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
 

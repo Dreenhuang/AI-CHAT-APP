@@ -14,6 +14,18 @@
 
 const https = require('https');
 
+/**
+ * 清理AI回复内容 - 移除思考过程标签和多余空白
+ */
+const cleanAIContent = (rawContent) => {
+  if (!rawContent) return '';
+  let content = rawContent;
+  content = content.replace(/<think->[\s\S]*?<\/think->/gi, '').trim();
+  content = content.replace(/```[\s]*\n?/g, '').trim();
+  content = content.replace(/\n{3,}/g, '\n\n').trim();
+  return content;
+};
+
 // 从环境变量读取API配置
 const MINIMAX_API_KEY = process.env.MINIMAX_API_KEY;
 const MINIMAX_BASE_URL = process.env.MINIMAX_BASE_URL || 'https://api.minimax.chat/v1';
@@ -123,7 +135,7 @@ function callMinimaxAPI(messages) {
           }
 
           if (jsonResponse.choices && jsonResponse.choices.length > 0) {
-            resolve(jsonResponse.choices[0].message.content);
+            resolve(cleanAIContent(jsonResponse.choices[0].message.content));
           } else {
             reject(new Error('MiniMax API返回格式异常'));
           }
@@ -198,7 +210,7 @@ function callDeepSeekAPI(messages) {
           }
 
           if (jsonResponse.choices && jsonResponse.choices.length > 0) {
-            resolve(jsonResponse.choices[0].message.content);
+            resolve(cleanAIContent(jsonResponse.choices[0].message.content));
           } else {
             reject(new Error('DeepSeek API返回格式异常'));
           }
@@ -281,7 +293,7 @@ function generateFallbackResponse(userMessage, role, personality) {
   
   // 根据用户消息长度调整回复
   if (userMessage.length > 100) {
-    return baseResponse + '\n\n（注：由于网络原因，当前使用离线模式回复）';
+    return baseResponse + '\n\n（AI服务暂时繁忙，已使用本地模式回复，正在自动重连...）';
   }
   
   return baseResponse;

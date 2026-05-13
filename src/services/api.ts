@@ -214,7 +214,52 @@ export const userApi = {
     }),
 };
 
-// ============ 默认导出 ============
+// ============ 辩论AI生成API ============
+
+export interface DebateGenerateRequest {
+  topic: string;
+  roleType: string;
+  roleName: string;
+  soul?: string;
+  action?: string;
+  actionLabel?: string;
+  actionDescription?: string;
+  messages?: { role: string; roleName: string; roleType?: string; content: string }[];
+  outputDepth?: 'brief' | 'normal' | 'detailed';
+  roundNumber?: number;
+}
+
+export interface DebateBatchRequest {
+  topic: string;
+  roles: {
+    roleType: string;
+    roleName: string;
+    soul?: string;
+    action?: string;
+    actionLabel?: string;
+    actionDescription?: string;
+  }[];
+  messages?: any[];
+  outputDepth?: string;
+}
+
+export const debateApi = {
+  /** 为单个角色生成辩论回复 */
+  generateResponse: async (data: DebateGenerateRequest) =>
+    request<{ content: string; roleType: string; roleName: string }>('/debate/generate', {
+      method: 'POST',
+      body: data,
+    }),
+
+  /** 批量生成多角色辩论回复 */
+  generateBatch: async (data: DebateBatchRequest) =>
+    request<{ results: { roleType: string; roleName: string; content: string; success: boolean }[] }>('/debate/generate-batch', {
+      method: 'POST',
+      body: data,
+    }),
+};
+
+// ============ 默认导出（更新） ============
 
 export default {
   topic: topicApi,
@@ -222,4 +267,5 @@ export default {
   message: messageApi,
   soul: soulApi,
   user: userApi,
+  debate: debateApi,
 };

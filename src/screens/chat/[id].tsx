@@ -7,9 +7,9 @@
  * 2. 消息列表：
  *    - AI消息：左侧显示，白色气泡#FFFFFF，带头像和角色名
  *    - 用户消息：右侧显示，浅绿气泡#95EC69
- * 3. 消息状态：
- *    - 连通时："正在输入中..."
- *    - 断开时："用户离线"
+ * 3. 多AI角色轮流讨论（进入话题时自动启动）
+ *    - 根据讨论模式配置自动生成多角色发言
+ *    - 按flow流程控制发言顺序和轮次
  * 4. 输入区域：
  *    - 角色选择下拉（群组辩论模式）
  *    - 文本输入框 + 发送按钮
@@ -36,6 +36,7 @@ import {
 } from 'react-native';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 
 // 导入组件
 import ChatBubble from '../../components/ChatBubble';
@@ -45,16 +46,45 @@ import Toast from '../../components/Toast';
 
 // 导入Store和类型
 import { useChatStore } from '../../stores/useChatStore';
+import { useConnectionStore } from '../../stores/useConnectionStore';
+import { useAIModelStore } from '../../stores/useAIModelStore';
 import { Message, Soul } from '../../types';
 
 // 导入主题
 import { Colors } from '../../theme/colors';
+
+/**
+ * 清理AI回复内容 - 移除思考过程标签和多余空白
+ * 过滤 <think->...</think->、```...``` 等非输出内容
+ */
+const cleanAIContent = (rawContent: string): string => {
+  if (!rawContent) return '';
+  let content = rawContent;
+  // 移除 <think->...</think-> 标签及其内容（DeepSeek/MiniMax思维链）
+  content = content.replace(/<think->[\s\S]*?<\/think->/gi, '').trim();
+  // 移除 ```...``` 代码块标记（如果误包含）
+  content = content.replace(/```[\s]*\n?/g, '').trim();
+  // 移除多余的空行（超过2个连续换行合并为2个）
+  content = content.replace(/\n{3,}/g, '\n\n').trim();
+  return content;
+};
 
 // 导入工具函数
 import { generateId } from '../../utils';
 
 // 导入Mock数据（用于Demo模式）
 import { mockSouls, getSoulById } from '../../data/souls';
+
+// ============ 多角色讨论引擎导入 ============
+import DebateEngine, {
+  DebateRole,
+  DebateConfig,
+  DebateMessage as EngineMessage,
+  DebateState,
+} from '../../services/debateEngine';
+import { DISCUSSION_MODES, MODE_DEFAULT_SOULS } from '../../data/discussionModes';
+import { soulPresets } from '../../data/soulPresets';
+import { allTopics } from '../../data/topics';
 
 // ============ 类型定义 ============
 
@@ -94,15 +124,173 @@ const ChatDetailScreen: React.FC = () => {
   const [selectedRole, setSelectedRole] = useState<string>('');      // 选中的角色ID
   const [showRolePicker, setShowRolePicker] = useState(false);       // 是否显示角色选择器
   const [isTyping, setIsTyping] = useState(false);                   // AI是否正在输入
-  const [isConnected, setIsConnected] = useState(true);              // 连接状态（Demo默认true）
+
+  // 连接状态 - 从全局Store获取
+  const isConnected = useConnectionStore((s) => s.status) === 'connected';
+  const isReconnecting = useConnectionStore((s) => s.status) === 'reconnecting';
 
   // Toast状态
   const [toastVisible, setToastVisible] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [toastType, setToastType] = useState<'success' | 'error' | 'warning' | 'info'>('info');
 
+  // ============ 多角色讨论引擎状态 ============
+  const [isDebateMode, setIsDebateMode] = useState(false);       // 是否为多角色讨论模式
+  const [debateStatus, setDebateStatus] = useState<string>('');  // 讨论状态
+  const debateEngineRef = useRef<DebateEngine | null>(null);     // 引擎实例引用
+  const debateStartedRef = useRef(false);                        // 防止重复启动
+
   // Refs
   const flatListRef = useRef<FlatList>(null);
+  const thinkingMessagesRef = useRef<Set<string>>(new Set());    // 跟踪"思考中"消息
+
+  // ============ 辅助函数：从soulPresets查找角色灵魂 ============
+  const findSoulPreset = useCallback((roleType: string, modeId: string): { name: string; soul: string; avatar?: string } | null => {
+    const defaultSouls = (MODE_DEFAULT_SOULS as any)[modeId];
+    if (defaultSouls) {
+      const soulId = defaultSouls[roleType];
+      if (soulId) {
+        for (const category of Object.values(soulPresets) as any[]) {
+          const found = category.find((s: any) => s.id === soulId);
+          if (found) return { name: found.name, soul: found.soul, avatar: found.avatar };
+        }
+      }
+    }
+    return null;
+  }, []);
+
+  // ============ 辅助函数：根据模式创建辩论角色 ============
+  const createDebateRoles = useCallback((modeId: string): DebateRole[] => {
+    const mode = (DISCUSSION_MODES as any)[modeId];
+    if (!mode || !mode.defaultRoles) return [];
+
+    return mode.defaultRoles.map((role: any, index: number) => {
+      const preset = findSoulPreset(role.roleType, modeId);
+      const roleIndex = index + 1;
+      return {
+        id: `${modeId}-${role.roleType}-${roleIndex}`,
+        name: preset?.name || role.label || `${role.roleType}${roleIndex}`,
+        roleType: role.roleType,
+        soulPresetId: preset ? `${role.roleType}-${roleIndex}` : undefined,
+        soul: preset?.soul || `你是一位${role.label || role.roleType}，请积极参与讨论。`,
+      };
+    });
+  }, [findSoulPreset]);
+
+  // ============ 辅助函数：将引擎消息添加到聊天Store ============
+  const addEngineMessageToChat = useCallback((engineMsg: EngineMessage) => {
+    if (engineMsg.type === 'system') {
+      const systemMsg: Message = {
+        id: engineMsg.id,
+        conversationId,
+        sender: 'ai',
+        content: engineMsg.title || engineMsg.content,
+        type: 'text',
+        status: 'delivered',
+        timestamp: engineMsg.timestamp,
+      };
+      addMessage(systemMsg);
+      return;
+    }
+
+    if (engineMsg.isStreaming) {
+      thinkingMessagesRef.current.add(engineMsg.id);
+      setIsTyping(true);
+      return;
+    }
+
+    thinkingMessagesRef.current.delete(engineMsg.id);
+    if (thinkingMessagesRef.current.size === 0) {
+      setIsTyping(false);
+    }
+
+    const msg: Message = {
+      id: engineMsg.id,
+      conversationId,
+      sender: 'ai',
+      content: `【${engineMsg.roleName || engineMsg.role}】\n${engineMsg.content}`,
+      type: 'text',
+      status: 'delivered',
+      timestamp: engineMsg.timestamp,
+    };
+    addMessage(msg);
+
+    setTimeout(() => {
+      flatListRef.current?.scrollToEnd({ animated: true });
+    }, 100);
+  }, [conversationId, addMessage]);
+
+  // ============ 自动启动多角色讨论（当topicId存在时） ============
+  useEffect(() => {
+    if (!topicId || debateStartedRef.current) return;
+    debateStartedRef.current = true;
+
+    const initDebate = async () => {
+      try {
+        const topic = allTopics.find(t => t.id === topicId);
+        const topicTitle = topic?.title || '热门议题讨论';
+
+        const modeId = 'standard-debate';
+        const mode = (DISCUSSION_MODES as any)[modeId];
+        if (!mode) return;
+
+        const roles = createDebateRoles(modeId);
+        if (roles.length === 0) {
+          showToast('无法创建讨论角色', 'error');
+          return;
+        }
+
+        const config: DebateConfig = {
+          modeId,
+          topic: topicTitle,
+          roles,
+          outputDepth: 'normal',
+        };
+
+        const engine = new DebateEngine(
+          config,
+          (state: DebateState) => {
+            setDebateStatus(state.status);
+            if (state.status === 'running') setIsDebateMode(true);
+            if (state.status === 'completed') {
+              showToast('讨论已结束', 'info');
+              setIsTyping(false);
+            }
+          },
+          (msg: EngineMessage) => {
+            addEngineMessageToChat(msg);
+          }
+        );
+
+        debateEngineRef.current = engine;
+
+        const welcomeMsg: Message = {
+          id: `welcome-${Date.now()}`,
+          conversationId,
+          sender: 'ai',
+          content: `🤖 **多角色讨论已启动！**\n\n📌 主题：**${topicTitle}**\n📋 模式：**${mode.name}**\n👥 参与角色：${roles.map(r => `【${r.name}】`).join(' ')}\n\n系统正在依次生成各角色的观点，请稍候...`,
+          type: 'text',
+          status: 'delivered',
+          timestamp: new Date().toISOString(),
+        };
+        addMessage(welcomeMsg);
+
+        setTimeout(() => {
+          engine.start();
+        }, 500);
+      } catch (error) {
+        console.error('[Chat] 初始化讨论引擎失败:', error);
+        showToast('初始化讨论失败，尝试手动发送消息', 'error');
+      }
+    };
+
+    initDebate();
+
+    return () => {
+      debateEngineRef.current = null;
+      debateStartedRef.current = false;
+    };
+  }, [topicId, conversationId, createDebateRoles, addEngineMessageToChat, addMessage]);
 
   // ==================== 数据获取 ====================
 
@@ -162,9 +350,8 @@ const ChatDetailScreen: React.FC = () => {
    * 流程：
    * 1. 验证输入内容
    * 2. 创建用户消息对象并添加到Store
-   * 3. 清空输入框
-   * 4. 滚动到最新消息
-   * 5. 调用AI API生成回复（真实模式）
+   * 3. 如果是讨论模式，将消息提交给DebateEngine推动下一步
+   * 4. 否则调用单次AI API
    */
   const handleSend = useCallback(async () => {
     if (!inputText.trim()) {
@@ -195,9 +382,20 @@ const ChatDetailScreen: React.FC = () => {
       flatListRef.current?.scrollToEnd({ animated: true });
     }, 100);
 
-    // ========== 调用AI API生成真实回复 ==========
+    // ========== 讨论模式：使用DebateEngine推动流程 ==========
+    if (isDebateMode && debateEngineRef.current) {
+      try {
+        debateEngineRef.current.submitUserMessage(messageContent);
+      } catch (error) {
+        console.error('[Chat] 讨论引擎处理用户消息失败:', error);
+        showToast('引擎处理失败', 'error');
+      }
+      return;
+    }
+
+    // ========== 普通模式：调用AI API生成真实回复 ==========
     await callAIAPI(messageContent);
-  }, [inputText, conversationId, addMessage]);
+  }, [inputText, conversationId, addMessage, isDebateMode]);
 
   /**
    * 调用AI服务生成真实回复
@@ -208,11 +406,9 @@ const ChatDetailScreen: React.FC = () => {
    * 3. 如果API失败，降级为模拟回复
    */
   const callAIAPI = async (userMessageContent: string) => {
-    // 显示"正在输入中..."状态
     setIsTyping(true);
 
     try {
-      // 获取当前选中的角色信息（用于个性化回复）
       const selectedSoul = selectedRole ? getSoulById(selectedRole) : null;
       
       const aiRequestBody = {
@@ -226,35 +422,74 @@ const ChatDetailScreen: React.FC = () => {
 
       console.log('[Chat] 正在调用AI API...', aiRequestBody);
 
-      // 调用后端AI接口
-      const response = await fetch('http://localhost:9461/api/ai/generate', {
+      try {
+        const response = await fetch('http://localhost:9461/api/ai/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(aiRequestBody),
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.success && data.content) {
+        console.log('[Chat] 后端AI回复成功:', cleanAIContent(data.content).slice(0, 50) + '...');
+        createAIMessage(cleanAIContent(data.content), selectedSoul?.id);
+        return;
+      }
+      } catch (backendError) {
+        console.warn('[Chat] 后端API不可用，切换到直接调用DeepSeek API:', backendError);
+      }
+
+      const config = useAIModelStore.getState().currentConfig;
+      console.log(`[Chat] 直接调用 ${config.model} at ${config.baseUrl}`);
+
+      const systemPrompt = `你是PRD辩论APP中的AI辩论角色。
+- 角色ID: ${selectedSoul?.id || 'default'}
+- 性格特点: ${selectedSoul?.description || '你是一个理性的辩论助手'}
+- 对话风格: ${selectedSoul?.personality || '专业、有逻辑、友好'}
+
+【回应要求】
+1. 保持角色性格的一致性
+2. 回应有理有据，可以举例或引用数据
+3. 语言生动有趣，避免过于生硬
+4. 回复长度控制在100-300字之间
+5. 不要说"我是AI"或"作为语言模型"之类的话`;
+
+      const directResponse = await fetch(`${config.baseUrl}/chat/completions`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${config.apiKey}`,
         },
-        body: JSON.stringify(aiRequestBody),
+        body: JSON.stringify({
+          model: config.model,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userMessageContent },
+          ],
+          max_tokens: config.maxTokens,
+          temperature: config.temperature,
+        }),
+        signal: AbortSignal.timeout(30000),
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || `API错误 (${response.status})`);
+      if (!directResponse.ok) {
+        const errData = await directResponse.json().catch(() => ({}));
+        throw new Error(errData?.error?.message || `DeepSeek API错误 (${directResponse.status})`);
       }
 
-      if (!data.success || !data.content) {
-        throw new Error(data.error || 'AI返回内容为空');
+      const directData = await directResponse.json();
+      const content = cleanAIContent(directData.choices?.[0]?.message?.content);
+
+      if (!content) {
+        throw new Error('AI返回内容为空');
       }
 
-      console.log('[Chat] AI回复成功:', data.content.slice(0, 50) + '...');
-
-      // 创建AI消息
-      createAIMessage(data.content, selectedSoul?.id);
+      console.log('[Chat] DeepSeek直接调用成功:', content.slice(0, 50) + '...');
+      createAIMessage(content, selectedSoul?.id);
 
     } catch (error) {
-      console.error('[Chat] AI API调用失败:', error);
-      
-      // 降级方案：使用模拟回复
-      console.log('[Chat] 使用模拟回复作为降级方案');
+      console.error('[Chat] 所有AI API调用失败:', error);
       useFallbackResponse(userMessageContent);
     }
   };
@@ -263,6 +498,9 @@ const ChatDetailScreen: React.FC = () => {
    * 创建AI消息并添加到聊天列表
    */
   const createAIMessage = (content: string, soulId?: string) => {
+    // 清理AI回复内容（移除思考标签等）
+    const cleanedContent = cleanAIContent(content);
+    
     // 获取当前会话的AI/Soul参与者信息
     const aiParticipant = currentConversation?.participants.find(
       (p) => p.role === 'ai' || p.role === 'soul'
@@ -273,7 +511,7 @@ const ChatDetailScreen: React.FC = () => {
       id: generateId('msg'),
       conversationId,
       sender: soulId ? 'soul' : 'ai',
-      content,
+      content: cleanedContent,
       type: 'text',
       status: 'delivered',
       timestamp: new Date().toISOString(),
@@ -322,8 +560,8 @@ const ChatDetailScreen: React.FC = () => {
         fallbackContent = responses[Math.floor(Math.random() * responses.length)];
       }
 
-      // 标记为降级回复
-      fallbackContent += '\n\n（注：当前为离线模式，已连接网络后将启用AI智能回复）';
+      // 标记为降级回复（友好提示）
+      fallbackContent += '\n\n（AI服务暂时繁忙，请稍后重试）';
 
       // 创建消息
       createAIMessage(fallbackContent);
@@ -390,6 +628,25 @@ const ChatDetailScreen: React.FC = () => {
    * 渲染列表底部状态指示器
    */
   const renderFooter = () => {
+    if (isDebateMode && debateStatus === 'running') {
+      // 多角色讨论正在进行中
+      return (
+        <View style={styles.debateStatusBar}>
+          <Ionicons name="chatbubbles" size={16} color="#7B1FA2" style={styles.debateStatusIcon} />
+          <Text style={styles.debateStatusText}>多角色讨论进行中...</Text>
+        </View>
+      );
+    }
+
+    if (isDebateMode && debateStatus === 'completed') {
+      return (
+        <View style={[styles.debateStatusBar, { backgroundColor: '#E8F5E9' }]}>
+          <Ionicons name="checkmark-circle" size={16} color="#2E7D32" style={styles.debateStatusIcon} />
+          <Text style={[styles.debateStatusText, { color: '#2E7D32' }]}>讨论已结束</Text>
+        </View>
+      );
+    }
+
     if (isTyping) {
       // 正在输入中...
       return (
@@ -402,12 +659,20 @@ const ChatDetailScreen: React.FC = () => {
       );
     }
 
+    if (isReconnecting) {
+      return (
+        <View style={[styles.offlineIndicator, { borderColor: '#F57C00' }]}>
+          <Ionicons name="sync" size={16} color="#D97706" style={styles.offlineIcon} />
+          <Text style={[styles.offlineText, { color: '#D97706' }]}>正在自动重连...</Text>
+        </View>
+      );
+    }
+
     if (!isConnected) {
-      // 用户离线
       return (
         <View style={styles.offlineIndicator}>
-          <Ionicons name="cloud-offline" size={16} color="#E65100" style={styles.offlineIcon} />
-          <Text style={styles.offlineText}>用户离线</Text>
+          <Ionicons name="cloud-offline" size={16} color="#DC2626" style={styles.offlineIcon} />
+          <Text style={[styles.offlineText, { color: '#DC2626' }]}>服务未连接</Text>
         </View>
       );
     }
@@ -479,11 +744,11 @@ const ChatDetailScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      {/* 状态栏 */}
+      {/* 状态栏 - 浅蓝色适配 */}
       <StatusBar barStyle="light-content" backgroundColor={Colors.primary} />
 
-      {/* ==================== 自定义导航栏 ==================== */}
-      <View style={styles.header}>
+      {/* ==================== 自定义导航栏 - 浅蓝色统一风格 ==================== */}
+      <View style={[styles.header, { backgroundColor: Colors.primary }]}>
         {/* 左侧：返回按钮 */}
         <TouchableOpacity
           style={styles.backButton}
@@ -626,14 +891,12 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background, // #F5F5F5 浅灰背景
   },
 
-  // ========== 导航栏样式 ==========
+  // ========== 导航栏样式 - 统一浅蓝色风格 ==========
   header: {
+    height: 44,                              // 统一高度
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.primary, // #AFDD22 主题色
-    paddingVertical: 12,
     paddingHorizontal: 8,
-    paddingTop: 10,
   },
   backButton: {
     width: 36,
@@ -686,33 +949,33 @@ const styles = StyleSheet.create({
   // ========== 消息容器样式 ==========
   aiMessageContainer: {
     flexDirection: 'row',
-    paddingHorizontal: 12,
+    paddingHorizontal: 8,
     paddingTop: 8,
-    maxWidth: '80%',
-    alignSelf: 'flex-start', // 左对齐
+    maxWidth: '90%',
+    alignSelf: 'flex-start',
   },
   userMessageContainer: {
-    paddingHorizontal: 12,
+    paddingHorizontal: 8,
     paddingTop: 8,
-    maxWidth: '80%',
-    alignSelf: 'flex-end', // 右对齐
+    maxWidth: '90%',
+    alignSelf: 'flex-end',
   },
 
   // ========== 头像样式（AI/Soul） ==========
   avatar: {
-    width: 40,               // 40x40px（聊天内头像尺寸）
-    height: 40,
-    borderRadius: 20,        // 圆形头像
-    marginRight: 8,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    marginRight: 6,
     backgroundColor: '#F0F0F5',
   },
 
   // ========== 发送者名称 ==========
   senderName: {
     fontSize: 12,
-    color: Colors.textSecondary, // #888888 灰色
+    color: Colors.textSecondary,
     marginTop: 4,
-    marginLeft: 48,             // 与头像对齐
+    marginLeft: 42,
     marginBottom: 4,
   },
 
@@ -749,6 +1012,25 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     marginLeft: 8,
     fontStyle: 'italic',
+  },
+
+  // ========== 多角色讨论状态栏 ==========
+  debateStatusBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    backgroundColor: '#F3E5F5',
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#CE93D8',
+  },
+  debateStatusIcon: {
+    marginRight: 6,
+  },
+  debateStatusText: {
+    fontSize: 13,
+    color: '#7B1FA2',
+    fontWeight: '500',
   },
 
   // ========== 离线指示器 ==========

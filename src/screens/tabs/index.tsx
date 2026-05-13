@@ -148,37 +148,31 @@ const ChatListScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      {/* 状态栏 - 浅色内容适配深蓝导航栏 */}
+      {/* 状态栏 - 浅蓝色适配 */}
       <StatusBar
         barStyle="light-content"
-        backgroundColor={Colors.gradientStart}
+        backgroundColor={Colors.primary}
         translucent={false}
       />
 
-      {/* ==================== 导航栏区域 ==================== */}
-      <View style={styles.headerContainer}>
-        {/* 深蓝渐变背景 */}
-        <LinearGradient
-          colors={[Colors.gradientStart, Colors.gradientEnd]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.headerGradient}
-        >
-          {/* 导航栏内容 */}
-          <View style={styles.headerContent}>
-            {/* 左侧：标题 + 计数徽章 */}
-            <View style={styles.headerLeft}>
-              <Text style={styles.headerTitle}>讨论</Text>
-              {!showSearch && conversations.length > 0 && (
-                <View style={styles.countBadge}>
-                  <Text style={styles.countBadgeText}>
-                    {conversations.length}
-                  </Text>
-                </View>
-              )}
-            </View>
+      {/* ==================== 导航栏区域 - 浅蓝色统一风格 ==================== */}
+      <View style={[styles.headerContainer, { backgroundColor: Colors.primary }]}>
+        {/* 导航栏内容 */}
+        <View style={styles.headerContent}>
+          {/* 左侧：标题 + 计数徽章 */}
+          <View style={styles.headerLeft}>
+            <Text style={styles.headerTitle}>讨论</Text>
+            {!showSearch && conversations.length > 0 && (
+              <View style={styles.countBadge}>
+                <Text style={styles.countBadgeText}>
+                  {conversations.length}
+                </Text>
+              </View>
+            )}
+          </View>
 
-            {/* 右侧：搜索图标按钮 */}
+          {/* 右侧：搜索按钮 */}
+          <View style={styles.headerRight}>
             <TouchableOpacity
               style={styles.searchButton}
               onPress={toggleSearch}
@@ -191,7 +185,7 @@ const ChatListScreen: React.FC = () => {
               />
             </TouchableOpacity>
           </View>
-        </LinearGradient>
+        </View>
 
         {/* ==================== 搜索框（条件显示） ==================== */}
         {showSearch && (
@@ -272,22 +266,9 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,           // #F8FAFC 极浅灰蓝背景
   },
 
-  // ========== 导航栏样式 ==========
+  // ========== 导航栏样式 - 统一浅蓝色风格 ==========
   headerContainer: {
     zIndex: 10,
-  },
-
-  /** 渐变导航栏背景 */
-  headerGradient: {
-    paddingTop: 12,
-    paddingHorizontal: 20,
-    paddingBottom: 16,
-    // 阴影效果 - 营造浮起感
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 6,
   },
 
   /** 导航栏内容布局 */
@@ -295,6 +276,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    height: 44,                              // 统一高度
+    paddingHorizontal: 16,
   },
 
   /** 左侧标题区 */
@@ -338,22 +321,41 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 
+  /** 右侧图标容器 */
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+
   // ========== 搜索框样式 ==========
   searchBarContainer: {
-    backgroundColor: '#FFFFFF',               // 白色背景
+    backgroundColor: '#F8FAFC',                   // 极浅灰蓝背景
     paddingHorizontal: 16,
     paddingVertical: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: Colors.border,           // 金属银半透明边框
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',                  // 柔和边框
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
 
   searchInputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.background,         // 浅灰蓝背景
-    borderRadius: 12,                           // 中等圆角
-    paddingHorizontal: 12,
-    height: 42,
+    backgroundColor: '#FFFFFF',                   // 纯白背景
+    borderRadius: 12,                             // 中等圆角
+    paddingHorizontal: 14,
+    height: 44,                                  // 标准高度
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',                      // 柔和边框
+    shadowColor: '#0EA5E9',                      // 浅蓝色阴影（品牌色）
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
   },
 
   searchInputIcon: {

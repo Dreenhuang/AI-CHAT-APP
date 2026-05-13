@@ -131,101 +131,106 @@ export const getMappedRoleType = (logicalType) => {
 export const MODE_DEFAULT_SOULS = {
   // ========== 一对一双向商量类 ==========
   'free-dialogue': {
-    'proposer': 'proposer-logical',
-    'reviewer': 'reviewer-detailed',
+    'participant-a': 'proposer-logical',
+    'participant-b': 'reviewer-detailed',
   },
   'qa-chase': {
-    'proposer': 'proposer-innovative',
-    'reviewer': 'reviewer-user',
+    'asker': 'proposer-innovative',
+    'answerer': 'reviewer-user',
   },
   'complement': {
-    'proposer': 'proposer-practical',
+    'presenter': 'proposer-practical',
     'supplementer': null,
   },
 
   // ========== 多人圆桌合议类 ==========
   'roundtable-free': {
     'host': 'host-neutral',
-    'debater': 'debater-collaborative',
+    'member': 'debater-collaborative',
   },
   'rotating-speaker': {
     'host': 'host-efficiency',
-    'debater': 'debater-analytical',
+    'member': 'debater-analytical',
   },
   'split-thesis': {
     'host': 'host-strict',
-    'debater': 'debater-specialized',
+    'dimension-1': 'debater-specialized',
+    'dimension-2': 'debater-analytical',
+    'dimension-3': 'debater-systematic',
   },
   'specialized': {
     'host': 'host-encouraging',
     'proposer': 'proposer-theoretical',
     'supplementer': null,
-    'debater': 'debater-devils-advocate',
+    'critic': 'debater-devils-advocate',
     'summarizer': 'summarizer-synthesizer',
   },
   'problem-breakdown': {
     'host': 'host-creative',
-    'debater': 'debater-systematic',
+    'member': 'debater-systematic',
   },
 
-  // ========== 正式对抗辩论类 ==========
+  // ========== 正式对抗辩论类（关键修复：key必须与defaultRoles.roleType一致） ==========
   'standard-debate': {
     'host': 'host-neutral',
-    'proposer': 'proposer-theoretical',
-    'reviewer': 'reviewer-detailed',
-    'summarizer': 'summarizer-judge',
+    'pro-side': 'proposer-theoretical',
+    'con-side': 'reviewer-detailed',
+    'judge': 'summarizer-judge',
   },
   'triangular': {
-    'proposer': 'proposer-innovative',
-    'reviewer': 'reviewer-risk-aware',
-    'summarizer': 'summarizer-mediator',
+    'pro-side': 'proposer-innovative',
+    'con-side': 'reviewer-risk-aware',
+    'neutral': 'summarizer-mediator',
   },
   'rebuttal-review': {
     'proposer': 'proposer-experienced',
-    'reviewer': 'reviewer-detailed',
+    'critic-logic': 'debater-analytical',
+    'critic-detail': 'reviewer-detailed',
+    'critic-risk': 'reviewer-risk-aware',
     'summarizer': 'summarizer-synthesizer',
   },
   'pros-cons': {
     'host': 'host-neutral',
-    'proposer': 'proposer-user-centric',
-    'reviewer': 'reviewer-cost-benefit',
-    'summarizer': 'summarizer-balancer',
+    'pros-side': 'proposer-user-centric',
+    'cons-side': 'reviewer-cost-benefit',
+    'neutral': 'summarizer-balancer',
   },
 
   // ========== 决策辅助类 ==========
   'qa-defense': {
     'host': 'host-strict',
     'proposer': 'proposer-logical',
-    'reviewer': 'reviewer-technical',
+    'questioner': 'reviewer-technical',
   },
   'proposal-vote': {
     'host': 'host-efficiency',
     'proposer': 'proposer-practical',
-    'summarizer': 'summarizer-tally',
+    'voter': 'summarizer-tally',
   },
 
   // ========== 头脑风暴共创类 ==========
   'brainstorm': {
     'host': 'host-creative',
-    'brainstormer': 'brainstormer-divergent',
+    'ideator': 'brainstormer-divergent',
   },
   'idea-chain': {
-    'proposer': 'brainstormer-divergent',
-    'reviewer': 'brainstormer-convergent',
+    'initiator': 'brainstormer-divergent',
+    'chainer': 'brainstormer-convergent',
   },
 
   // ========== 多AI专属协同类 ==========
   'ai-lead-supplement': {
-    'proposer': 'proposer-theoretical',
-    'reviewer': 'reviewer-detailed',
+    'main-ai': 'proposer-theoretical',
+    'sub-ai': 'reviewer-detailed',
   },
   'ai-parallel': {
-    'brainstormer': 'brainstormer-multidimensional',
+    'ai': 'brainstormer-multidimensional',
   },
   'ai-role-simulation': {
-    'brainstormer': 'brainstormer-perspective-taking',
-    'proposer': 'proposer-user-centric',
-    'reviewer': 'reviewer-risk-aware',
+    'main-ai': 'proposer-theoretical',
+    'expert-tech': 'debater-systematic',
+    'expert-business': 'debater-collaborative',
+    'expert-risk': 'reviewer-risk-aware',
   },
 };
 

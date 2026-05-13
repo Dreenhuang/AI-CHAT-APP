@@ -361,10 +361,10 @@ interface ChatState {
 
 export const useChatStore = create<ChatState>((set, get) => ({
   // ==================== 初始状态 ====================
-  // 预置Mock数据用于开发和演示
-  conversations: generateMockConversations(),
+  // 初始为空，数据从后端或用户创建动态加载
+  conversations: [],
   activeConversationId: null,
-  messages: generateAllMockMessages(),
+  messages: {},
   userPosition: null,
   isLoading: false,
 

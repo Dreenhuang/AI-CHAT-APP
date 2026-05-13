@@ -37,9 +37,9 @@ import FABButton from '../../components/FABButton';
 import { useContactStore } from '../../stores/useContactStore';
 import { Soul, SoulPersonality } from '../../types';
 
-// 导入预设数据 - 19种讨论模式和35个Soul角色
+// 导入预设数据 - 19种讨论模式和35位真实历史人物
 import { DISCUSSION_MODES, getAllModes, getModeCategories } from '../../data/discussionModes';
-import { soulPresets, getAllSouls } from '../../data/soulPresets';
+import { realPersonPresets, getAllRealPersons } from '../../data/realPersonPresets';
 import { memoAvatarUrls, getMemoAvatarUrl } from '../../data/memoAvatars';
 
 // 导入主题
@@ -131,26 +131,27 @@ const ContactsScreen: React.FC = () => {
       },
     }));
 
-    // ========== 第二段：好友（35个Soul角色） ==========
-    const allSouls = getAllSouls(); // 获取所有35个Soul角色
+    // ========== 第二段：好友（35位真实历史人物） ==========
+    const allRealPersons = getAllRealPersons(); // 获取所有35位真实历史人物
 
-    // 根据搜索文本筛选Soul角色
-    const filteredSouls = allSouls.filter(soul =>
-      soul.name.toLowerCase().includes(searchText.toLowerCase()) ||
-      soul.description.toLowerCase().includes(searchText.toLowerCase()) ||
-      soul.category.toLowerCase().includes(searchText.toLowerCase())
-    ).map((soul, index) => ({
-      id: soul.id,
+    // 根据搜索文本筛选历史人物
+    const filteredSouls = allRealPersons.filter(person =>
+      person.name.toLowerCase().includes(searchText.toLowerCase()) ||
+      person.description.toLowerCase().includes(searchText.toLowerCase()) ||
+      person.category.toLowerCase().includes(searchText.toLowerCase()) ||
+      (person.englishName && person.englishName.toLowerCase().includes(searchText.toLowerCase()))
+    ).map((person, index) => ({
+      id: person.id,
       type: 'soul' as const,
       item: {
-        ...soul,
-        // 将Soul角色转换为好友格式
-        name: soul.name,
-        description: soul.description,
-        personality: soul.character?.personality || '',
-        strengths: soul.strengths || [],
-        suitableFor: soul.suitableFor || [],
-        // 使用alohe/avatars的Memoji系列PNG头像（35个角色对应35个头像）
+        ...person,
+        // 将历史人物转换为好友格式
+        name: person.name,
+        description: person.description || `${person.category} | ${person.era}`,
+        personality: person.character?.personality?.join('、') || '',
+        strengths: [person.category, person.era?.split(' ')[0] || ''],
+        suitableFor: (person.works || person.companies || []).slice(0, 3),
+        // 使用Memoji系列头像
         avatar: memoAvatarUrls[index % 35],
       },
     }));
@@ -413,12 +414,13 @@ const ContactsScreen: React.FC = () => {
         stickySectionHeadersEnabled={true}
       />
 
-      {/* FAB悬浮按钮 */}
+      {/* FAB悬浮按钮 - 右下角 */}
       <FABButton
         icon="add"
         showMenu={showFABMenu}
         menuItems={fabMenuItems}
         onPress={() => setShowFABMenu(!showFABMenu)}
+        style={{ right: 16, left: 'auto' }}
       />
 
       {/* ========== 添加新角色Modal ========== */}

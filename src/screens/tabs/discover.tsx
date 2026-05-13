@@ -29,7 +29,10 @@ import TopicCard from '../../components/TopicCard';
 import EmptyState from '../../components/EmptyState';
 
 // 导入数据
-import { allTopics, getRandomTopics, getTopicsByCategory, TopicCategory, Topic } from '../../data/topics';
+import { allTopics, getRandomTopics, getFreshRandomTopics, getTopicsByCategory, TopicCategory, Topic } from '../../data/topics';
+
+// 导入AI热门话题服务
+import AITopicService, { AITopic as AIHotTopic } from '../../services/aitopicService';
 
 // Import theme
 import { Colors } from '../../theme/colors';
@@ -64,16 +67,59 @@ const DiscoverScreen: React.FC = () => {
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
 
+  // AI热门话题状态
+  const [aiHotTopics, setAiHotTopics] = useState<AIHotTopic[]>([]);
+  const [aiLoading, setAiLoading] = useState(true);
+  const [aiError, setAiError] = useState<string | null>(null);
+  const [aiLastUpdate, setAiLastUpdate] = useState<string | null>(null);
+
   // 分批加载数量配置
   const BATCH_SIZE = 20; // 每批加载20个
   const MAX_DISPLAY = 100; // 最大显示数量（避免内存问题）
 
   /**
-   * 初始化：加载首批30个议题（比原来增加50%）
+   * 初始化：加载首批30个议题 + AI热门话题
    */
   useEffect(() => {
     loadInitialTopics();
+    loadAIHotTopics();
+    
+    // 启动AI话题自动更新（每24小时）
+    const aiService = AITopicService.getInstance();
+    aiService.startAutoUpdate(24 * 60 * 60 * 1000);  // 24小时
+
+    return () => {
+      aiService.stopAutoUpdate();  // 组件卸载时停止更新
+    };
   }, []);
+
+  /**
+   * 加载AI热门话题
+   */
+  const loadAIHotTopics = async (forceRefresh = false) => {
+    try {
+      setAiLoading(true);
+      setAiError(null);
+
+      const aiService = AITopicService.getInstance();
+      const topics = await aiService.getHotTopics(forceRefresh);
+
+      if (topics && topics.length > 0) {
+        setAiHotTopics(topics);
+        setAiLastUpdate(new Date().toLocaleTimeString('zh-CN', {
+          hour: '2-digit',
+          minute: '2-digit',
+        }));
+      } else {
+        setAiError('暂无AI热点数据');
+      }
+    } catch (error: any) {
+      console.error('加载AI热门话题失败:', error);
+      setAiError(error.message || '加载失败');
+    } finally {
+      setAiLoading(false);
+    }
+  };
 
   /**
    * 加载初始话题（30个）
@@ -113,14 +159,17 @@ const DiscoverScreen: React.FC = () => {
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
 
-    // 模拟网络延迟
-    await new Promise(resolve => setTimeout(resolve, 800));
-
-    // 重新加载新数据（完全替换）
-    const newTopics = loadRandomTopics();
-    setTopics(newTopics);
-    setDisplayedTopics(newTopics);
-    setHasMore(true); // 刷新后可以继续加载更多
+    // 同时刷新普通议题和AI热门话题
+    await Promise.all([
+      (async () => {
+        await new Promise(resolve => setTimeout(resolve, 800));
+        const newTopics = loadRandomTopics();
+        setTopics(newTopics);
+        setDisplayedTopics(newTopics);
+        setHasMore(true);
+      })(),
+      loadAIHotTopics(true),  // 强制刷新AI话题
+    ]);
 
     setRefreshing(false);
   }, [selectedCategory]);
@@ -247,6 +296,168 @@ const DiscoverScreen: React.FC = () => {
   );
 
   /**
+   * Render AI Hot Topics Section - 渲染AI智能热点区域
+   */
+  const renderAIHotTopicsSection = () => {
+    if (aiLoading && aiHotTopics.length === 0) {
+      return (
+        <View style={styles.aiSectionContainer}>
+          <View style={styles.aiHeader}>
+            <View style={styles.aiHeaderLeft}>
+              <Ionicons name="flash" size={20} color="#FF6B35" />
+              <Text style={styles.aiTitle}>AI 智能热点</Text>
+              <View style={[styles.aiBadge, { backgroundColor: '#E3F2FD' }]}>
+                <Text style={[styles.aiBadgeText, { color: '#1976D2' }]}>加载中...</Text>
+              </View>
+            </View>
+          </View>
+          <View style={styles.aiLoadingContainer}>
+            <View style={styles.aiSkeleton} />
+            <View style={styles.aiSkeleton} />
+            <View style={styles.aiSkeleton} />
+          </View>
+        </View>
+      );
+    }
+
+    if (aiError && aiHotTopics.length === 0) {
+      return (
+        <View style={styles.aiSectionContainer}>
+          <View style={styles.aiHeader}>
+            <View style={styles.aiHeaderLeft}>
+              <Ionicons name="flash" size={20} color="#FF6B35" />
+              <Text style={styles.aiTitle}>AI 智能热点</Text>
+              <TouchableOpacity onPress={() => loadAIHotTopics(true)}>
+                <Text style={styles.aiRetryText}>重试</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+          <View style={styles.aiErrorContainer}>
+            <Ionicons name="warning-outline" size={24} color="#FF9800" />
+            <Text style={styles.aiErrorText}>{aiError}</Text>
+          </View>
+        </View>
+      );
+    }
+
+    if (aiHotTopics.length === 0) return null;
+
+    return (
+      <View style={styles.aiSectionContainer}>
+        {/* Header */}
+        <View style={styles.aiHeader}>
+          <View style={styles.aiHeaderLeft}>
+            <Ionicons name="flash" size={20} color="#FF6B35" />
+            <Text style={styles.aiTitle}>AI 智能热点</Text>
+            <View style={[styles.aiBadge, { backgroundColor: '#FFF3E0' }]}>
+              <Text style={[styles.aiBadgeText, { color: '#F57C00' }]}>今日更新</Text>
+            </View>
+          </View>
+          {aiLastUpdate && (
+            <Text style={styles.aiUpdateTime}>更新于 {aiLastUpdate}</Text>
+          )}
+        </View>
+
+        {/* Topics List */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.aiTopicsScroll}
+        >
+          {aiHotTopics.map((topic, index) => (
+            <TouchableOpacity
+              key={topic.id || index}
+              style={styles.aiTopicCard}
+              onPress={() => handleStartAIDebate(topic)}
+              activeOpacity={0.7}
+            >
+              {/* Heat indicator */}
+              <View style={[
+                styles.heatIndicator,
+                { backgroundColor: topic.heat >= 95 ? '#FF1744' : topic.heat >= 90 ? '#FF6D00' : '#FFAB00' }
+              ]}>
+                <Text style={styles.heatText}>{topic.heat}</Text>
+              </View>
+
+              {/* Category tag */}
+              <View style={[styles.categoryTag, { backgroundColor: getCategoryColor(topic.category) + '20' }]}>
+                <Text style={[styles.categoryText, { color: getCategoryColor(topic.category) }]}>
+                  {topic.category}
+                </Text>
+              </View>
+
+              {/* Title */}
+              <Text style={styles.aiTopicTitle} numberOfLines={2}>
+                {topic.title}
+              </Text>
+
+              {/* Keywords */}
+              <View style={styles.keywordsContainer}>
+                {topic.keywords.slice(0, 3).map((keyword, idx) => (
+                  <View key={idx} style={styles.keywordTag}>
+                    <Text style={styles.keywordText}>{keyword}</Text>
+                  </View>
+                ))}
+              </View>
+
+              {/* Description preview */}
+              <Text style={styles.aiTopicDesc} numberOfLines={2}>
+                {topic.description}
+              </Text>
+
+              {/* Action hint */}
+              <View style={styles.actionHint}>
+                <Ionicons name="chatbubbles" size={14} color={Colors.primary} />
+                <Text style={styles.actionHintText}>点击讨论</Text>
+              </View>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
+    );
+  };
+
+  /**
+   * Handle start AI debate - 处理AI话题点击
+   */
+  const handleStartAIDebate = (topic: AIHotTopic) => {
+    console.log('Start AI debate:', topic.title);
+    
+    const convertedTopic = {
+      id: topic.id,
+      title: topic.title,
+      description: topic.description,
+      category: topic.category as TopicCategory,
+      heat: topic.heat,
+    };
+
+    (navigation as any).navigate('ChatDetail', {
+      id: `new_ai_${topic.id}`,
+      topicId: topic.id,
+      aiTopic: convertedTopic,
+    });
+  };
+
+  /**
+   * Get category color - 获取分类颜色
+   */
+  const getCategoryColor = (category: string): string => {
+    const colors: Record<string, string> = {
+      '科技': '#2196F3',
+      '教育': '#4CAF50',
+      '社会': '#FF9800',
+      '生活': '#9C27B0',
+      '娱乐': '#E91E63',
+      '体育': '#00BCD4',
+      '政治': '#795548',
+      '经济': '#607D8B',
+      '文化': '#8BC34A',
+      '环境': '#009688',
+    };
+    return colors[category] || '#9E9E9E';
+  };
+
+  /**
    * Render empty component
    */
   const renderEmptyComponent = () => (
@@ -295,6 +506,9 @@ const DiscoverScreen: React.FC = () => {
           <Text style={styles.countLabel}>个议题</Text>
         </View>
       </View>
+
+      {/* ==================== AI Hot Topics Section - 智能热点区域 ==================== */}
+      {renderAIHotTopicsSection()}
 
       {/* ==================== Category Selection Modal ==================== */}
       <Modal
@@ -605,6 +819,192 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: 13,
     color: Colors.primary,
+  },
+
+  // ========== AI Hot Topics Styles - AI智能热点样式 ==========
+  aiSectionContainer: {
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 12,
+    marginTop: 8,
+    marginBottom: 4,
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+    overflow: 'hidden',
+  },
+
+  aiHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F5F5F5',
+  },
+
+  aiHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+
+  aiTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#212121',
+    marginLeft: 8,
+    fontFamily: 'Inter',
+  },
+
+  aiBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+    marginLeft: 8,
+  },
+
+  aiBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+
+  aiUpdateTime: {
+    fontSize: 12,
+    color: '#9E9E9E',
+    fontFamily: 'Inter',
+  },
+
+  aiRetryText: {
+    fontSize: 13,
+    color: Colors.primary,
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+
+  aiLoadingContainer: {
+    padding: 16,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+
+  aiSkeleton: {
+    width: (SCREEN_WIDTH - 80) / 3,
+    height: 180,
+    backgroundColor: '#F5F5F5',
+    borderRadius: 12,
+  },
+
+  aiErrorContainer: {
+    padding: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  aiErrorText: {
+    fontSize: 14,
+    color: '#757575',
+    marginTop: 8,
+    textAlign: 'center',
+  },
+
+  aiTopicsScroll: {
+    paddingHorizontal: 12,
+    paddingBottom: 14,
+  },
+
+  aiTopicCard: {
+    width: 160,
+    backgroundColor: '#FAFAFA',
+    borderRadius: 12,
+    marginRight: 10,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#EEEEEE',
+  },
+
+  heatIndicator: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+
+  heatText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+
+  categoryTag: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    marginBottom: 6,
+  },
+
+  categoryText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+
+  aiTopicTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#212121',
+    lineHeight: 20,
+    marginBottom: 6,
+    fontFamily: 'Inter',
+  },
+
+  keywordsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginBottom: 6,
+  },
+
+  keywordTag: {
+    backgroundColor: '#E8EAF6',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    marginRight: 4,
+    marginBottom: 2,
+  },
+
+  keywordText: {
+    fontSize: 10,
+    color: '#3F51B5',
+  },
+
+  aiTopicDesc: {
+    fontSize: 12,
+    color: '#616161',
+    lineHeight: 16,
+    marginBottom: 8,
+  },
+
+  actionHint: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: 6,
+    borderTopWidth: 1,
+    borderTopColor: '#E0E0E0',
+  },
+
+  actionHintText: {
+    fontSize: 12,
+    color: Colors.primary,
+    fontWeight: '600',
+    marginLeft: 4,
   },
 });
 

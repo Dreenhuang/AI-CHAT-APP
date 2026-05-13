@@ -33,6 +33,9 @@ import ProfileScreen from './screens/tabs/me';
 import ChatDetailScreen from './screens/chat/[id]';
 import LoginScreen from './screens/LoginScreen';
 
+// 导入Soul角色管理页面
+import { SoulsManagement } from './pages/Souls';
+
 // 导入主题配置 - 使用新的深空科技主题
 import { Colors } from './theme/colors';
 import { FontFamily } from './theme/typography';
@@ -244,6 +247,26 @@ export default function App() {
                   component={ChatDetailScreen}
                   options={{
                     presentation: 'card',
+                    gestureEnabled: true,
+                  }}
+                />
+
+                {/* Soul角色管理页面 */}
+                <Stack.Screen
+                  name="SoulsManagement"
+                  component={SoulsManagement}
+                  options={{
+                    presentation: 'modal',
+                    gestureEnabled: true,
+                  }}
+                />
+
+                {/* Soul角色管理页面 */}
+                <Stack.Screen
+                  name="SoulsManagement"
+                  component={SoulsManagement}
+                  options={{
+                    presentation: 'modal',
                     gestureEnabled: true,
                   }}
                 />

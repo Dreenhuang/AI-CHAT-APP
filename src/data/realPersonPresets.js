@@ -2715,3 +2715,22 @@ export const realPersonPresets = {
     },
   ],
 };
+
+// 获取所有真实历史人物（扁平化数组）
+export const getAllRealPersons = () => {
+  const all = [];
+  Object.values(realPersonPresets).forEach((category) => {
+    all.push(...category);
+  });
+  return all;
+};
+
+// 获取角色分类
+export const realPersonCategories = {
+  philosophers: '哲学家',
+  scientists: '科学家',
+  leaders: '政治家/领袖',
+  economists: '经济学家',
+  artists_writers: '艺术家/文学家',
+  entrepreneurs: '企业家',
+};

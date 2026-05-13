@@ -37,6 +37,12 @@ import { ThemeId, getAllThemes } from '../../theme/colors';
 /** 菜单项配置 - 使用 Ionicons 图标 */
 const menuItems = [
   {
+    id: 'souls',
+    icon: 'people-outline' as const,
+    title: 'Soul角色管理',
+    screen: 'SoulsManagement' as const,
+  },
+  {
     id: 'theme',
     icon: 'color-palette-outline' as const,
     title: '主题设置',
@@ -124,6 +130,12 @@ const ProfileScreen: React.FC = () => {
       setCustomBaseUrl(aiConfig.baseUrl);
       setCustomModel(aiConfig.model);
       setTestResult(null);
+      return;
+    }
+
+    // Soul角色管理页面导航
+    if (itemId === 'souls') {
+      navigation.navigate('SoulsManagement' as never);
       return;
     }
 

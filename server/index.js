@@ -49,6 +49,7 @@ app.use('/api/souls', soulsRoutes);     // Soul角色相关接口
 app.use('/api/debates', debatesRoutes); // 辩论记录相关接口
 app.use('/api/ai', aiRoutes);           // AI生成接口（新增）
 app.use('/api/debate', debateGenRoutes); // 多角色辩论生成接口
+app.use('/api/notifications', require('./routes/notifications')); // 通知偏好管理
 
 // 健康检查接口
 app.get('/api/health', (req, res) => {

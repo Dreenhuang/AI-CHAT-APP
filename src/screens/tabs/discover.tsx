@@ -37,6 +37,9 @@ import AITopicService, { AITopic as AIHotTopic } from '../../services/aitopicSer
 // Import theme
 import { Colors } from '../../theme/colors';
 
+// 导入每日精选话题预览组件
+import DailyTopicPreview from '../../components/DailyTopicPreview';
+
 /** Screen dimensions for responsive design */
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -576,6 +579,9 @@ const DiscoverScreen: React.FC = () => {
           </View>
         </TouchableOpacity>
       </Modal>
+
+      {/* ==================== 每日精选话题预览 ==================== */}
+      <DailyTopicPreview />
 
       {/* ==================== Topic Cards List ==================== */}
       <FlatList

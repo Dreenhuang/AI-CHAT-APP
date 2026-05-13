@@ -82,11 +82,11 @@ model AuditLog {
   createdAt   DateTime   @default(now()) @map("created_at") @db.Timestamptz  // 日志创建时间（不可修改）
 
   // 关联关系：属于某个管理员
-  admin Admin @relation(fields: [adminId], references: [id], onDelete: "Restrict")
+  admin Admin @relation(fields: [adminId], references: [id], onDelete: Restrict)
 
   // 索引定义：优化审计日志的常见查询场景
   @@index([adminId, createdAt])           // 复合索引1：查某管理员的操作历史（最常用）
-  @@index([createdAt Desc])               // 索引2：按时间倒序查看最新日志（仪表盘用）
+  @@index([createdAt(sort: Desc)])        // 索引2：按时间倒序查看最新日志（仪表盘用）
   @@index([targetType, targetId])         // 复合索引3：查某对象的所有操作记录
   @@index([action, createdAt])            // 复合索引4：按操作类型筛选+时间排序
   @@index([result])                       // 索引5：筛选成功/失败的操作
@@ -120,18 +120,110 @@ model SystemConfig {
   updatedAt     DateTime      @updatedAt @map("updated_at") @db.Timestamptz       // 最后更新时间
 
   // 关联关系：配置由管理员修改（可选，因为初始配置可能是系统预设）
-  admin Admin? @relation(fields: [updatedBy], references: [id], onDelete: "Set Null")
+  admin Admin? @relation(fields: [updatedBy], references: [id], onDelete: SetNull)
 
   // 索引定义：优化配置项的查询和分组
   @@index([configType])                 // 索引1：按配置类型分组显示（配置页面分类）
   @@index([configKey])                  // 索引2：按键名查找（已unique，索引冗余但加速查询）
   @@index([isSensitive])                // 索引3：筛选敏感/非敏感配置
-  @@updatedAt                          // 索引4：按更新时间排序（最近修改的配置排在前面）
   @@map("system_configs")               // 映射到PostgreSQL实际表名：system_configs
 }
 
 // ============================================================================
-// 📝 枚举类型定义
+// 📝 新增表4: users - 应用用户表
+// ============================================================================
+// 用途：存储PRD辩论APP的终端用户信息
+// 替代 userService.js 中的 mockUsers 数组
+// ============================================================================
+
+model AppUser {
+  id            String    @id @default(uuid()) @db.Uuid
+  phone         String?   @unique @map("phone") @db.VarChar(20)
+  nickname      String    @map("nickname") @db.VarChar(100)
+  avatar        String?   @map("avatar") @db.Text
+  status        String    @default("ACTIVE") @map("status") @db.VarChar(20)
+  role          String    @default("USER") @map("role") @db.VarChar(20)
+  email         String?   @map("email") @db.VarChar(200)
+  gender        String?   @default("unknown") @map("gender") @db.VarChar(10)
+  bio           String?   @map("bio") @db.Text
+  password      String?   @map("password") @db.VarChar(255)
+  lastLoginAt   DateTime? @map("last_login_at") @db.Timestamptz
+  lastLoginIp   String?   @map("last_login_ip") @db.VarChar(45)
+  lastLoginUA   String?   @map("last_login_ua") @db.Text
+  debateCount   Int       @default(0) @map("debate_count")
+  messageCount  Int       @default(0) @map("message_count")
+  groupCount    Int       @default(0) @map("group_count")
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@index([status])
+  @@index([role])
+  @@index([createdAt])
+  @@index([lastLoginAt])
+  @@map("app_users")
+}
+
+// ============================================================================
+// 📝 新增表5: topics - 辩论议题表
+// ============================================================================
+// 用途：存储辩论议题信息
+// 替代 topicService.js 中的 mockTopics 数组
+// ============================================================================
+
+model Topic {
+  id              String    @id @default(uuid()) @db.Uuid
+  title           String    @map("title") @db.VarChar(200)
+  description     String?   @map("description") @db.Text
+  slug            String?   @unique @map("slug") @db.VarChar(255)
+  category        String?   @map("category") @db.VarChar(100)
+  coverImage      String?   @map("cover_image") @db.Text
+  status          String    @default("draft") @map("status") @db.VarChar(20)
+  hotness         Int       @default(0) @map("hotness")
+  debateCount     Int       @default(0) @map("debate_count")
+  participantCount Int      @default(0) @map("participant_count")
+  viewCount       Int       @default(0) @map("view_count")
+  version         Int       @default(1) @map("version")
+  createdBy       String?   @map("created_by") @db.VarChar(100)
+  createdByName   String?   @map("created_by_name") @db.VarChar(100)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@index([status])
+  @@index([category])
+  @@index([hotness])
+  @@index([createdAt])
+  @@map("topics")
+}
+
+// ============================================================================
+// 📝 新增表6: souls - AI辩论角色表
+// ============================================================================
+// 用途：存储AI辩论角色的配置信息
+// 替代 soulService.js 中的 mockSouls 数组
+// ============================================================================
+
+model Soul {
+  id              String    @id @default(uuid()) @db.Uuid
+  name            String    @map("name") @db.VarChar(100)
+  avatar          String?   @map("avatar") @db.Text
+  category        String    @map("category") @db.VarChar(50)
+  description     String?   @map("description") @db.Text
+  status          String    @default("active") @map("status") @db.VarChar(20)
+  isPreset        Boolean   @default(false) @map("is_preset")
+  createdBy       String?   @map("created_by") @db.VarChar(100)
+  createdByName   String?   @map("created_by_name") @db.VarChar(100)
+  // AI配置存储为JSON
+  aiConfig        Json?     @map("ai_config")
+  // 使用统计存储为JSON
+  usageStats      Json?     @map("usage_stats")
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@index([status])
+  @@index([category])
+  @@index([createdAt])
+  @@map("souls")
+}
 // ============================================================================
 
 /// 管理员角色枚举

@@ -6,7 +6,7 @@
  */
 
 import React, { useState } from 'react';
-import { Soul, SoulTypeColors, SoulTypeLabels, SoulStatusLabels, PersonalityTagLabels } from './types';
+import { Soul, SoulTypeColors, SoulTypeLabels, SoulStatusLabels, PersonalityTagLabels } from '../types';
 
 interface SoulCardProps {
   soul: Soul;

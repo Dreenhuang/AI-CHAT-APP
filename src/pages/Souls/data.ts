@@ -274,7 +274,7 @@ export const mockSouls: Soul[] = [
     personalityTags: ['rational', 'logical', 'critical'],
     languageStyle: 'formal',
     aiParams: {
-     创造力: 5,
+     creativity: 5,
       rigor: 10,
       interaction: 4,
     },

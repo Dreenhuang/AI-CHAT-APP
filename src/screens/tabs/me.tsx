@@ -34,6 +34,9 @@ import { useThemeStore, useCurrentColors } from '../../stores/useThemeStore';
 import { useAIModelStore, PRESET_MODELS } from '../../stores/useAIModelStore';
 import { ThemeId, getAllThemes } from '../../theme/colors';
 
+// 导入通知设置组件
+import NotificationSettingsModal from '../../components/NotificationSettingsModal';
+
 /** 菜单项配置 - 使用 Ionicons 图标 */
 const menuItems = [
   {
@@ -41,6 +44,12 @@ const menuItems = [
     icon: 'people-outline' as const,
     title: 'Soul角色管理',
     screen: 'SoulsManagement' as const,
+  },
+  {
+    id: 'notification',
+    icon: 'notifications-outline' as const,
+    title: '通知设置',
+    screen: 'NotificationSettings' as const,
   },
   {
     id: 'theme',
@@ -92,6 +101,7 @@ const ProfileScreen: React.FC = () => {
   // Modal状态
   const [showThemePicker, setShowThemePicker] = useState(false);
   const [showAISettings, setShowAISettings] = useState(false);
+  const [showNotificationSettings, setShowNotificationSettings] = useState(false);
 
   // 自定义配置表单状态
   const [customApiKey, setCustomApiKey] = useState(aiConfig.apiKey);
@@ -120,6 +130,11 @@ const ProfileScreen: React.FC = () => {
     // 特殊处理
     if (itemId === 'theme') {
       setShowThemePicker(true);
+      return;
+    }
+
+    if (itemId === 'notification') {
+      setShowNotificationSettings(true);
       return;
     }
 
@@ -408,6 +423,12 @@ const ProfileScreen: React.FC = () => {
           </View>
         </View>
       </Modal>
+
+      {/* ========== 通知设置Modal ========== */}
+      <NotificationSettingsModal
+        visible={showNotificationSettings}
+        onClose={() => setShowNotificationSettings(false)}
+      />
 
       {/* ========== AI模型设置Modal ========== */}
       <Modal

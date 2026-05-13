@@ -1,15 +1,21 @@
 /**
- * AI服务调用模块
- * 
+ * AI服务调用模块 - v3.1 (真实历史人物深度整合版)
+ *
  * 提供与大模型API交互的功能：
- * - 聊天对话（单轮/多轮）
- * - 辩论内容生成
- * - 角色扮演对话
+ * - 聊天对话（单轮/多轮）- 支持真实历史人物角色扮演
+ * - 辩论内容生成 - 利用2700+字深度soul设定
+ * - 角色扮演对话 - 完全还原历史人物思维模式
  * - 防止重复词语的输出处理
+ *
+ * 核心升级：
+ * - 从抽象角色(soulPresets)升级为真实历史人物(realPersonPresets)
+ * - 使用完整的character.values、speechPatterns、interactionPreferences
+ * - 实现真正的"与真人对话"体验
  */
 
 import { useAIModelStore } from '../stores/useAIModelStore';
 import { SoulPreset } from '../data/soulPresets';
+import { RealPersonPreset } from '../data/realPersonPresets';
 
 // ============ 类型定义 ============
 
@@ -49,13 +55,18 @@ const removeRepetitivePhrases = (text: string): string => {
 };
 
 /**
- * 构建系统提示词，包含角色设定
+ * 构建系统提示词 - v3.1 (真实历史人物深度版)
+ *
+ * 优先使用RealPersonPreset的完整soul设定（2700+字）
+ * 如果没有，降级使用SoulPreset的简单信息
  */
 const buildSystemPrompt = (
   context: 'chat' | 'debate' | 'discussion',
   soulPreset?: SoulPreset,
+  realPersonPreset?: RealPersonPreset,
   topic?: string,
 ): string => {
+  // 基础提示词
   const basePrompt = `你是一个专业的辩论助手，擅长逻辑分析和观点表达。
 要求：
 - 回答要简洁明了，避免冗长
@@ -63,6 +74,48 @@ const buildSystemPrompt = (
 - 不要重复相同的内容
 - 使用自然的语言表达`;
 
+  // ========== 真实历史人物模式（核心升级）==========
+  if (context === 'chat' && realPersonPreset) {
+    const person = realPersonPreset;
+    const char = person.character || {};
+
+    return `${basePrompt}
+
+【重要】你现在需要完全扮演以下真实历史人物：
+
+📛 角色名称：${person.name}
+${person.englishName ? `🌐 英文名：${person.englishName}` : ''}
+🏷️ 类别：${person.category || '未分类'}
+⏰ 时代：${person.era || '未知'}
+
+📚 身份背景：
+- 职业：${person.identity?.profession || '未知'}
+- 著名成就：${person.identity?.knownFor || '无'}
+- 历史影响：${person.identity?.influence || '无'}
+
+🧠 性格特征：
+${(char.personality || []).map(p => `  • ${p}`).join('\n')}
+
+💬 说话风格：
+${(char.speakingStyle || []).map(s => `  • ${s}`).join('\n')}
+
+🎯 核心价值观：
+${(char.values || []).map(v => `  • ${v}`).join('\n')}
+
+🔥 深度灵魂设定（必须严格遵守）：
+${person.soul || '无深度设定'}
+
+【对话要求】
+1. 完全按照这个人物的性格、价值观、说话风格来回答
+2. 使用该人物的标志性表达方式和思维习惯
+3. 回答时要体现该人物的时代背景和知识结构
+4. 可以适当引用该人物的经典名言或著作
+5. 保持角色一致性，不要出戏
+
+现在请以${person.name}的身份，回答用户的问题。`;
+  }
+
+  // ========== 传统Soul角色模式（兼容旧版）==========
   if (context === 'chat' && soulPreset) {
     return `${basePrompt}
 
@@ -166,7 +219,28 @@ const callAIAPI = async (
 // ============ 导出的服务函数 ============
 
 /**
- * 与Soul角色进行聊天对话
+ * 与真实历史人物进行深度角色扮演对话（核心功能）
+ * 使用2700+字完整soul设定，实现"与真人对话"体验
+ */
+export const chatWithRealPerson = async (
+  message: string,
+  realPersonPreset: RealPersonPreset,
+  history?: ChatMessage[],
+): Promise<AIResponse> => {
+  const systemPrompt = buildSystemPrompt('chat', undefined, realPersonPreset);
+
+  const messages: ChatMessage[] = [
+    { role: 'system', content: systemPrompt },
+    ...(history || []),
+    { role: 'user', content: message },
+  ];
+
+  // 真实历史人物使用稍高的temperature以增加个性表现
+  return callAIAPI(messages, { temperature: 0.85 });
+};
+
+/**
+ * 与Soul角色进行聊天对话（兼容旧版）
  */
 export const chatWithSoul = async (
   message: string,
@@ -174,7 +248,7 @@ export const chatWithSoul = async (
   history?: ChatMessage[],
 ): Promise<AIResponse> => {
   const systemPrompt = buildSystemPrompt('chat', soulPreset);
-  
+
   const messages: ChatMessage[] = [
     { role: 'system', content: systemPrompt },
     ...(history || []),
@@ -365,6 +439,7 @@ export const safeAICall = async (
 };
 
 export default {
+  chatWithRealPerson,  // 新增：真实历史人物深度对话
   chatWithSoul,
   generateDebateArgument,
   participateInDiscussion,

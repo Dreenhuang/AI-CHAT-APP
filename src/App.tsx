@@ -46,6 +46,10 @@ import { useUserStore } from './stores/useUserStore';
 // 导入连接监控
 import { startConnectionMonitor } from './services/connectionMonitor';
 
+// 导入通知服务
+import NotificationService from './services/notificationService';
+import { useDailyNotification } from './hooks/useDailyNotification';
+
 // ============ 导航器创建 ============
 
 const Tab = createBottomTabNavigator();
@@ -222,9 +226,38 @@ export default function App() {
     startConnectionMonitor();
   }, []);
 
+  // 初始化每日精选话题推送
+  useEffect(() => {
+    const initNotification = async () => {
+      try {
+        const service = NotificationService.getInstance();
+        const granted = await service.initialize();
+
+        if (granted) {
+          const userPrefs = useUserStore.getState();
+          if (userPrefs.notificationsEnabled) {
+            await service.scheduleDailyTopic();
+            console.log('[App] 每日精选话题推送已调度');
+          }
+        }
+      } catch (error) {
+        console.error('[App] 初始化推送服务失败:', error);
+      }
+    };
+
+    initNotification();
+  }, []);
+
+  // 通知点击监听器
+  const DailyNotificationWatcher: React.FC = () => {
+    useDailyNotification();
+    return null;
+  };
+
   return (
     <SafeAreaProvider>
       <View style={{ flex: 1 }}>
+        <DailyNotificationWatcher />
         <NavigationContainer>
           <Stack.Navigator
             screenOptions={{
@@ -247,16 +280,6 @@ export default function App() {
                   component={ChatDetailScreen}
                   options={{
                     presentation: 'card',
-                    gestureEnabled: true,
-                  }}
-                />
-
-                {/* Soul角色管理页面 */}
-                <Stack.Screen
-                  name="SoulsManagement"
-                  component={SoulsManagement}
-                  options={{
-                    presentation: 'modal',
                     gestureEnabled: true,
                   }}
                 />

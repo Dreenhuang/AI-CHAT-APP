@@ -14,6 +14,9 @@ export interface NotificationState {
 
 export function useDailyNotification() {
   const navigation = useNavigation<NavigationContainerRef<any>>();
+  const navigationRef = useRef(navigation);
+  navigationRef.current = navigation;
+  
   const notificationService = NotificationService.getInstance();
   const responseListenerRef = useRef<Notifications.EventSubscription | null>(null);
   const notificationListenerRef = useRef<Notifications.EventSubscription | null>(null);
@@ -45,7 +48,7 @@ export function useDailyNotification() {
   }, []);
 
   useEffect(() => {
-    if (!state.isInitialized || !navigation) return;
+    if (!state.isInitialized || !navigationRef.current) return;
 
     try {
       notificationListenerRef.current =
@@ -72,7 +75,7 @@ export function useDailyNotification() {
             }));
 
             try {
-              navigation.navigate('ChatDetail', {
+              navigationRef.current.navigate('ChatDetail', {
                 id: `push_topic_${topicId}`,
                 topicId,
               });
@@ -93,14 +96,14 @@ export function useDailyNotification() {
     return () => {
       cleanup();
     };
-  }, [state.isInitialized, navigation]);
+  }, [state.isInitialized]);
 
   const setupWebNotificationHandler = () => {
-    if ('serviceWorker' in navigator && navigation) {
+    if ('serviceWorker' in navigator && navigationRef.current) {
       navigator.serviceWorker.addEventListener('message', (event) => {
         if (event.data?.type === 'notification-click' && event.data?.topicId) {
           try {
-            navigation.navigate('ChatDetail', {
+            navigationRef.current.navigate('ChatDetail', {
               id: `push_topic_${event.data.topicId}`,
               topicId: event.data.topicId,
             });

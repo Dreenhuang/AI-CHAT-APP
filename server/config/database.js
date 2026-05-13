@@ -1,9 +1,16 @@
 const { createClient } = require('@supabase/supabase-js');
 const ws = require('ws');
+require('dotenv').config();
 
-const supabaseUrl = 'https://jaduaifzmgvaotyqnjfe.supabase.co';
-const supabaseServiceKey = 'sb_secret_JVY4_cy3xpr9G4Bx9MFoEA_OyOLb3pR';
-const supabaseAnonKey = 'sb_publishable_-oEDqL3QIqzluxLgonXHZg_hMTYXZJE';
+const supabaseUrl = process.env.SUPABASE_URL || 'https://jaduaifzmgvaotyqnjfe.supabase.co';
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY;
+const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || 'sb_publishable_-oEDqL3QIqzluxLgonXHZg_hMTYXZJE';
+
+if (!supabaseServiceKey) {
+  console.error('[Supabase] 错误: 缺少 SUPABASE_SERVICE_KEY 环境变量');
+  console.error('[Supabase] 请在 .env 文件中设置 SUPABASE_SERVICE_KEY');
+  process.exit(1);
+}
 
 // 创建服务端客户端（使用service_role key，拥有完全权限）
 const supabase = createClient(supabaseUrl, supabaseServiceKey, {

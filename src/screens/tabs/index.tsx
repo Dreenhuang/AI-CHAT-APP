@@ -133,6 +133,7 @@ const ChatListScreen: React.FC = () => {
    * 处理FAB点击 - 跳转到发现页面创建新讨论
    */
   const handleFABPress = () => {
+    // 跳转到发现页选择话题开始新讨论
     (navigation as any).navigate('Discover');
   };
 

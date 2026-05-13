@@ -55,6 +55,13 @@ import { useDailyNotification } from './hooks/useDailyNotification';
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
 
+// ============ 通知监听组件（必须在 NavigationContainer 内部） ============
+
+const DailyNotificationWatcher: React.FC = () => {
+  useDailyNotification();
+  return null;
+};
+
 // ============ 设计常量 ============
 
 /** Tab图标映射 - 使用outline/filled区分状态 */
@@ -90,11 +97,6 @@ interface TabIconProps {
   size: number;
 }
 
-/**
- * 自定义Tab图标
- * - 选中态：实心图标 + 科技蓝
- * - 未选中态：线框图标 + 金属灰
- */
 const TabIcon: React.FC<TabIconProps> = ({ routeName, focused, color, size }) => {
   const iconName = getTabIcon(routeName, focused);
 
@@ -103,7 +105,6 @@ const TabIcon: React.FC<TabIconProps> = ({ routeName, focused, color, size }) =>
       name={iconName as any}
       size={size}
       color={color}
-      // 添加微妙的缩放动画效果（选中时略大）
       style={{
         transform: [{ scale: focused ? 1.05 : 1 }],
       }}
@@ -113,35 +114,19 @@ const TabIcon: React.FC<TabIconProps> = ({ routeName, focused, color, size }) =>
 
 // ============ Tab导航配置 ============
 
-/**
- * Tab导航组件（包含4个Tab）
- *
- * 视觉设计规范：
- * - 背景：纯白 + 顶部微妙分割线
- * - 高度：50px（含安全区域适配）
- * - 选中色：Colors.primary（科技蓝 #0EA5E9）
- * - 未选中色：Colors.metallicSilver（金属银 #94A3B8）
- * - 字体：10sp Medium权重
- */
 const TabNavigator: React.FC = () => (
   <Tab.Navigator
     screenOptions={({ route }) => ({
       headerShown: false,
 
-      // ========== TabBar样式 - 金属质感设计 ==========
       tabBarStyle: {
-        // 背景与边框
         backgroundColor: '#FFFFFF',
         borderTopWidth: StyleSheet.hairlineWidth,
-        borderTopColor: 'rgba(148, 163, 184, 0.2)', // 金属银半透明
-
-        // 尺寸与定位
-        height: Platform.OS === 'ios' ? 83 : 56, // iOS包含安全区域
+        borderTopColor: 'rgba(148, 163, 184, 0.2)',
+        height: Platform.OS === 'ios' ? 83 : 56,
         paddingBottom: Platform.OS === 'ios' ? 8 : 8,
         paddingTop: 8,
         paddingHorizontal: 8,
-
-        // 阴影 - 微妙提升感
         shadowColor: '#000',
         shadowOffset: { width: 0, height: -2 },
         shadowOpacity: 0.06,
@@ -149,20 +134,17 @@ const TabNavigator: React.FC = () => (
         elevation: 4,
       },
 
-      // ========== 颜色配置 ==========
-      tabBarActiveTintColor: Colors.primary,           // 选中：科技蓝 #0EA5E9
-      tabBarInactiveTintColor: Colors.metallicSilver,   // 未选中：金属银 #94A3B8
+      tabBarActiveTintColor: Colors.primary,
+      tabBarInactiveTintColor: Colors.metallicSilver,
 
-      // ========== 标签文字样式 ==========
       tabBarLabelStyle: {
         fontSize: 10,
         fontWeight: '500' as const,
         marginTop: 3,
-        fontFamily: FontFamily.primary.split(',')[0].trim(), // 使用Inter字体
+        fontFamily: FontFamily.primary.split(',')[0].trim(),
         letterSpacing: 0.1,
       },
 
-      // ========== 图标配置 ==========
       tabBarIcon: ({ focused, color }) => (
         <TabIcon
           routeName={route.name}
@@ -172,92 +154,54 @@ const TabNavigator: React.FC = () => (
         />
       ),
 
-      // ========== 动画配置 ==========
       tabBarItemStyle: {
         paddingVertical: 4,
       },
     })}
   >
-    <Tab.Screen
-      name="ChatList"
-      component={ChatListScreen}
-      options={{ tabBarLabel: getTabLabel('ChatList') }}
-    />
-
-    <Tab.Screen
-      name="Contacts"
-      component={ContactsScreen}
-      options={{ tabBarLabel: getTabLabel('Contacts') }}
-    />
-
-    <Tab.Screen
-      name="Discover"
-      component={DiscoverScreen}
-      options={{ tabBarLabel: getTabLabel('Discover') }}
-    />
-
-    <Tab.Screen
-      name="Profile"
-      component={ProfileScreen}
-      options={{ tabBarLabel: getTabLabel('Profile') }}
-    />
+    <Tab.Screen name="ChatList" component={ChatListScreen} options={{ tabBarLabel: getTabLabel('ChatList') }} />
+    <Tab.Screen name="Contacts" component={ContactsScreen} options={{ tabBarLabel: getTabLabel('Contacts') }} />
+    <Tab.Screen name="Discover" component={DiscoverScreen} options={{ tabBarLabel: getTabLabel('Discover') }} />
+    <Tab.Screen name="Profile" component={ProfileScreen} options={{ tabBarLabel: getTabLabel('Profile') }} />
   </Tab.Navigator>
 );
 
 // ============ 主应用组件 ============
 
-/**
- * App主入口 - 根据登录状态动态渲染
- *
- * 逻辑说明：
- * 1. 检查useUserStore.isAuthenticated状态
- * 2. 已登录 → 直接显示MainTabs（主功能页面）
- * 3. 未登录 → 显示Login页面（登录/注册）
- * 4. 登录成功后自动跳转到MainTabs
- */
 export default function App() {
-  // 获取用户登录状态（注意：UserStore使用的是isLoggedIn字段）
   const isLoggedIn = useUserStore((state) => state.isLoggedIn);
 
   console.log('[App] 渲染App组件, isLoggedIn:', isLoggedIn);
 
-  // 启动连接监控（全局只需启动一次）
   useEffect(() => {
-    startConnectionMonitor();
+    try {
+      startConnectionMonitor();
+    } catch (error) {
+      console.warn('[App] 连接监控启动失败:', error);
+    }
   }, []);
 
-  // 初始化每日精选话题推送
   useEffect(() => {
     const initNotification = async () => {
       try {
         const service = NotificationService.getInstance();
         const granted = await service.initialize();
-
         if (granted) {
           const userPrefs = useUserStore.getState();
           if (userPrefs.notificationsEnabled) {
             await service.scheduleDailyTopic();
-            console.log('[App] 每日精选话题推送已调度');
           }
         }
       } catch (error) {
-        console.error('[App] 初始化推送服务失败:', error);
+        console.warn('[App] 初始化推送服务失败:', error);
       }
     };
-
     initNotification();
   }, []);
-
-  // 通知点击监听器
-  const DailyNotificationWatcher: React.FC = () => {
-    useDailyNotification();
-    return null;
-  };
 
   return (
     <SafeAreaProvider>
       <View style={{ flex: 1 }}>
-        <DailyNotificationWatcher />
         <NavigationContainer>
           <Stack.Navigator
             screenOptions={{
@@ -267,79 +211,26 @@ export default function App() {
           >
             {isLoggedIn ? (
               <>
-                {/* 已登录：直接显示主Tab导航 */}
-                <Stack.Screen
-                  name="MainTabs"
-                  component={TabNavigator}
-                  options={{ gestureEnabled: false }}
-                />
-
-                {/* 聊天详情页（子页面） */}
-                <Stack.Screen
-                  name="ChatDetail"
-                  component={ChatDetailScreen}
-                  options={{
-                    presentation: 'card',
-                    gestureEnabled: true,
-                  }}
-                />
-
-                {/* Soul角色管理页面 */}
-                <Stack.Screen
-                  name="SoulsManagement"
-                  component={SoulsManagement}
-                  options={{
-                    presentation: 'modal',
-                    gestureEnabled: true,
-                  }}
-                />
+                <Stack.Screen name="MainTabs" component={TabNavigator} options={{ gestureEnabled: false }} />
+                <Stack.Screen name="ChatDetail" component={ChatDetailScreen} options={{ presentation: 'card', gestureEnabled: true }} />
+                <Stack.Screen name="SoulsManagement" component={SoulsManagement} options={{ presentation: 'modal', gestureEnabled: true }} />
               </>
             ) : (
               <>
-                {/* 未登录：显示登录页面 */}
-                <Stack.Screen
-                  name="Login"
-                  component={LoginScreen}
-                  options={{
-                    gestureEnabled: false,
-                  }}
-                />
-
-                {/* 登录后的主Tab导航 */}
-                <Stack.Screen
-                  name="MainTabs"
-                  component={TabNavigator}
-                />
-
-                {/* 聊天详情页（子页面） */}
-                <Stack.Screen
-                  name="ChatDetail"
-                  component={ChatDetailScreen}
-                  options={{
-                    presentation: 'card',
-                    gestureEnabled: true,
-                  }}
-                />
+                <Stack.Screen name="Login" component={LoginScreen} options={{ gestureEnabled: false }} />
+                <Stack.Screen name="MainTabs" component={TabNavigator} />
+                <Stack.Screen name="ChatDetail" component={ChatDetailScreen} options={{ presentation: 'card', gestureEnabled: true }} />
               </>
             )}
           </Stack.Navigator>
+          <DailyNotificationWatcher />
         </NavigationContainer>
       </View>
     </SafeAreaProvider>
   );
 }
 
-// 全局样式
 const appStyles = StyleSheet.create({
-  root: {
-    flex: 1,
-    position: 'relative',
-  },
-  indicatorOverlay: {
-    position: 'absolute',
-    top: Platform.OS === 'ios' ? 50 : 8,
-    right: 60, // 增加右边距，避免与搜索按钮重叠
-    zIndex: 9999,
-    elevation: 9999,
-  },
+  root: { flex: 1, position: 'relative' },
+  indicatorOverlay: { position: 'absolute', top: Platform.OS === 'ios' ? 50 : 8, right: 60, zIndex: 9999, elevation: 9999 },
 });

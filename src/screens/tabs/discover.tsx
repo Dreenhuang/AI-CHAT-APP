@@ -14,6 +14,7 @@ import {
   View,
   Text,
   StyleSheet,
+  ScrollView,
   FlatList,
   TouchableOpacity,
   Modal,
@@ -36,6 +37,9 @@ import AITopicService, { AITopic as AIHotTopic } from '../../services/aitopicSer
 
 // Import theme
 import { Colors } from '../../theme/colors';
+
+// 导入ChatStore（创建会话用）
+import { useChatStore } from '../../stores/useChatStore';
 
 // 导入每日精选话题预览组件
 import DailyTopicPreview from '../../components/DailyTopicPreview';
@@ -279,10 +283,25 @@ const DiscoverScreen: React.FC = () => {
   /**
    * Handle topic click - Start debate
    */
+  const { addConversation } = useChatStore();
   const handleStartDebate = (topic: any) => {
     console.log('Start debate:', topic.title);
+    const convId = `new_topic_${topic.id}`;
+    // 创建会话后再导航
+    const existingConv = useChatStore.getState().conversations.find(c => c.id === convId);
+    if (!existingConv) {
+      addConversation({
+        id: convId,
+        title: topic.title,
+        participants: [{ id: 'user', name: '我', role: 'user', avatar: '' }],
+        lastMessage: topic.description || '',
+        updatedAt: new Date().toISOString(),
+        unreadCount: 0,
+        type: 'debate',
+      } as any);
+    }
     (navigation as any).navigate('ChatDetail', {
-      id: `new_topic_${topic.id}`,
+      id: convId,
       topicId: topic.id,
     });
   };
@@ -434,8 +453,23 @@ const DiscoverScreen: React.FC = () => {
       heat: topic.heat,
     };
 
+    const convId = `new_ai_${topic.id}`;
+    // 创建会话后再导航
+    const existingConv = useChatStore.getState().conversations.find(c => c.id === convId);
+    if (!existingConv) {
+      addConversation({
+        id: convId,
+        title: `AI热点：${topic.title}`,
+        participants: [{ id: 'user', name: '我', role: 'user', avatar: '' }],
+        lastMessage: topic.description || '',
+        updatedAt: new Date().toISOString(),
+        unreadCount: 0,
+        type: 'debate',
+      } as any);
+    }
+
     (navigation as any).navigate('ChatDetail', {
-      id: `new_ai_${topic.id}`,
+      id: convId,
       topicId: topic.id,
       aiTopic: convertedTopic,
     });

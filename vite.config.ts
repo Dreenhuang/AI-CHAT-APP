@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite'
+import { defineConfig, Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
 
@@ -12,8 +12,22 @@ const reactNativeWebAliases = {
   'react-native/Libraries/Pressability/PressabilityDebug': path.resolve(__dirname, 'node_modules/react-native-web/dist/exports/View'),
 };
 
+// Packages that ship JSX in .js files (need special handling for Rollup)
+const jsxInJsPackages = [
+  '@expo/vector-icons',
+  'expo-linear-gradient',
+  'expo-notifications',
+  '@react-navigation',
+  'react-native-safe-area-context',
+];
+
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react({
+      // Tell the react plugin to also process .js files from these packages
+      include: /\.(jsx?|tsx?|mjs)$/,
+    }),
+  ],
 
   server: {
     port: 8081,
@@ -36,6 +50,9 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     sourcemap: true,
+    commonjsOptions: {
+      transformMixedEsModules: true,
+    },
   },
 
   resolve: {
@@ -43,11 +60,12 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
       ...reactNativeWebAliases,
     },
+    extensions: ['.web.tsx', '.web.ts', '.web.js', '.tsx', '.ts', '.js', '.json'],
   },
 
   esbuild: {
-    loader: 'jsx',
-    include: /.*/,
+    loader: 'tsx',
+    include: /src\/.*\.[jt]sx?$/,
     exclude: [],
   },
   
@@ -55,16 +73,20 @@ export default defineConfig({
     esbuildOptions: {
       loader: {
         '.js': 'jsx',
+        '.ts': 'tsx',
       },
     },
     include: [
       'react',
       'react-dom',
+      'react-native-web',
       'zustand',
-      '@expo/vector-icons',
       '@react-navigation/native',
       '@react-navigation/native-stack',
       '@react-navigation/bottom-tabs',
+      '@react-navigation/stack',
+      'react-native-safe-area-context',
+      '@expo/vector-icons',
     ],
   },
 })

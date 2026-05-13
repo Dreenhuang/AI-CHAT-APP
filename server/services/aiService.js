@@ -50,17 +50,17 @@ async function chat(message, options = {}) {
     history = []
   } = options;
 
+  // 构建系统提示词
+  const systemPrompt = buildSystemPrompt(role, personality, style);
+
+  // 构建消息数组（提到try外部，确保catch块也能访问）
+  const messages = [
+    { role: 'system', content: systemPrompt },
+    ...history,
+    { role: 'user', content: message }
+  ];
+
   try {
-    // 构建系统提示词
-    const systemPrompt = buildSystemPrompt(role, personality, style);
-
-    // 构建消息数组
-    const messages = [
-      { role: 'system', content: systemPrompt },
-      ...history,
-      { role: 'user', content: message }
-    ];
-
     console.log(`[AI] 正在调用MiniMax API... 角色: ${role}`);
 
     // 调用MiniMax API

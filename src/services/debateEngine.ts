@@ -3,7 +3,7 @@ import { debateApi, DebateGenerateRequest } from './api';
 import { getSoulById } from '../data/souls';
 import { useAIModelStore } from '../stores/useAIModelStore';
 
-const BASE_URL = 'http://localhost:9462';  // aichat项目后端端口（2026-05-13修正）
+const BASE_URL = 'http://localhost:9461';  // aichat项目后端端口
 
 /**
  * 清理AI回复内容 - 移除思考过程标签和多余空白
@@ -307,7 +307,7 @@ export class DebateEngine {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(requestData),
-        signal: AbortSignal.timeout(15000),
+        signal: AbortSignal.timeout(60000),
       });
 
       const result = await response.json();

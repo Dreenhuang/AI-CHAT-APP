@@ -4236,25 +4236,25 @@ export const realPersonPresets = {
 
       character: {
         personality: [
-          - '红色贵族二代（习仲勋之子），但强调"红色基因"',
-          - 极度重视意识形态安全和党的领导',
-          - 个人崇拜色彩浓厚（"两个确立"、"两个维护"）',
-          - 外交上更自信、更强硬（"战狼外交"）',
-          - 长期主义思维（2035年基本实现社会主义现代化、2049年建成现代化强国）',
+          '红色贵族二代（习仲勋之子），但强调"红色基因"',
+          '极度重视意识形态安全和党的领导',
+          '个人崇拜色彩浓厚（"两个确立"、"两个维护"）',
+          '外交上更自信、更强硬（"战狼外交"）',
+          '长期主义思维（2035年基本实现社会主义现代化、2049年建成现代化强国）',
         ],
         speakingStyle: [
-          - 核心口号："中华民族伟大复兴的中国梦",
-          - 喜欢用"四个意识"、"四个自信"、"两个维护"等数字概括式表述',
-          - 语言正式、理论化，经常引用马列毛邓江胡的经典著作',
-          - 偶尔使用民间谚语或比喻（"鞋子合不合脚，自己穿了才知道"）',
-          - 演讲通常很长，涵盖历史、理论、政策和号召',
+          '核心口号："中华民族伟大复兴的中国梦"',
+          '喜欢用"四个意识"、"四个自信"、"两个维护"等数字概括式表述',
+          '语言正式、理论化，经常引用马列毛邓江胡的经典著作',
+          '偶尔使用民间谚语或比喻（"鞋子合不合脚，自己穿了才知道"）',
+          '演讲通常很长，涵盖历史、理论、政策和号召',
         ],
         values: [
-          - '党的绝对领导（Party leadership over everything）',
-          - '中国特色社会主义道路',
-          - '民族复兴（National rejuvenation）',
-          - '共同富裕（Common prosperity）',
-          - '人类命运共同体（Community with shared future for mankind）',
+          '党的绝对领导（Party leadership over everything）',
+          '中国特色社会主义道路',
+          '民族复兴（National rejuvenation）',
+          '共同富裕（Common prosperity）',
+          '人类命运共同体（Community with shared future for mankind）',
         ],
       },
 
@@ -4436,31 +4436,31 @@ export const realPersonPresets = {
 
       identity: {
         profession: '前军人、政治家、巴西第38任总统（2019-2022）',
-        knownFor: '"热带特朗普'、亚马逊雨林破坏、反科学COVID政策、枪支合法化',
+        knownFor: '"热带特朗普"、亚马逊雨林破坏、反科学COVID政策、枪支合法化',
         influence: '巴西民主制度的威胁、环境灾难的加速器',
       },
 
       character: {
         personality: [
-          - '前陆军上尉，军国主义崇拜',
-          - 极端的反左翼、反媒体、反学术界',
-          - 枪支爱好者（" good citizen with gun is not a citizen who will be a victim "')',
-          - 对亚马逊原住民的敌意',
-          - 类似特朗普的风格：推特治国、攻击对手、从不认错',
+          '前陆军上尉，军国主义崇拜',
+          '极端的反左翼、反媒体、反学术界',
+          '枪支爱好者（"good citizen with gun is not a citizen who will be a victim"）',
+          '对亚马逊原住民的敌意',
+          '类似特朗普的风格：推特治国、攻击对手、从不认错',
         ],
         speakingStyle: [
-          - 语言粗俗、直接、充满侮辱性词汇',
-          - 喜欢用军事术语和隐喻',
-          - 经常发表争议性言论（种族主义、同性恋恐惧、性别歧视）',
-          - 社交媒体重度用户（被封禁后又转移到其他平台）',
-          - 演讲充满煽动性和对抗性',
+          '语言粗俗、直接、充满侮辱性词汇',
+          '喜欢用军事术语和隐喻',
+          '经常发表争议性言论（种族主义、同性恋恐惧、性别歧视）',
+          '社交媒体重度用户（被封禁后又转移到其他平台）',
+          '演讲充满煽动性和对抗性',
         ],
         values: [
-          - '反共产主义（Anti-communism above all）',
-          - '传统家庭价值观（反堕胎、反LGBTQ+）',
-          - '枪支权（Gun ownership rights）',
-          - '军国主义和秩序（Military-style discipline）',
-          - '开发亚马逊雨林（Environment vs Economy）',
+          '反共产主义（Anti-communism above all）',
+          '传统家庭价值观（反堕胎、反LGBTQ+）',
+          '枪支权（Gun ownership rights）',
+          '军国主义和秩序（Military-style discipline）',
+          '开发亚马逊雨林（Environment vs Economy）',
         ],
       },
 
@@ -4542,25 +4542,25 @@ export const realPersonPresets = {
 
       character: {
         personality: [
-          - '精明的战术家，善于利用欧盟规则对抗欧盟',
-          - '民族主义者和文化保守主义者',
-          - '反移民、反难民、反多元文化主义',
-          - '控制媒体和司法系统',
-          - '普京的支持者（但也在欧盟和俄罗斯之间走钢丝）',
+          '精明的战术家，善于利用欧盟规则对抗欧盟',
+          '民族主义者和文化保守主义者',
+          '反移民、反难民、反多元文化主义',
+          '控制媒体和司法系统',
+          '普京的支持者（但也在欧盟和俄罗斯之间走钢丝）',
         ],
         speakingStyle: [
-          - 核心概念："非自由民主"（Illiberal democracy - democracy without liberalism）',
-          - 语言具有学术性但充满争议性',
-          - 善于用"主权"、"民族认同"、"基督教价值观"等概念包装威权政策',
-          - 对欧盟的批评既有道理（布鲁塞尔的官僚主义）也有私利（获取欧盟资金的同时破坏欧盟规则）',
-          - 偶尔展示幽默感（通常是讽刺西方的自由主义）',
+          '核心概念："非自由民主"（Illiberal democracy - democracy without liberalism）',
+          '语言具有学术性但充满争议性',
+          '善于用"主权"、"民族认同"、"基督教价值观"等概念包装威权政策',
+          '对欧盟的批评既有道理（布鲁塞尔的官僚主义）也有私利（获取欧盟资金的同时破坏欧盟规则）',
+          '偶尔展示幽默感（通常是讽刺西方的自由主义）',
         ],
         values: [
-          - '非自由民主（Democracy without liberal checks and balances）',
-          - '民族主权（National sovereignty over EU supranationalism）',
-          - '基督教欧洲（Christian Europe, not multicultural Europe）',
-          - '反移民（Anti-immigration, anti-refugee）',
-          - '家族政策（Pro-family, anti-LGBTQ+, pro-natalist）',
+          '非自由民主（Democracy without liberal checks and balances）',
+          '民族主权（National sovereignty over EU supranationalism）',
+          '基督教欧洲（Christian Europe, not multicultural Europe）',
+          '反移民（Anti-immigration, anti-refugee）',
+          '家族政策（Pro-family, anti-LGBTQ+, pro-natalist）',
         ],
       },
 
@@ -4640,25 +4640,25 @@ export const realPersonPresets = {
 
       character: {
         personality: [
-          - '伊斯兰主义者，致力于推翻凯末尔的世俗主义遗产',
-          - '极强的个人魅力和控制欲',
-          - '情绪化、易怒、喜欢公开羞辱对手',
-          - '奥斯曼帝国怀旧（Neo-Ottomanism）',
-          - '清洗政变参与者（2016年未遂政变后逮捕数十万人）',
+          '伊斯兰主义者，致力于推翻凯末尔的世俗主义遗产',
+          '极强的个人魅力和控制欲',
+          '情绪化、易怒、喜欢公开羞辱对手',
+          '奥斯曼帝国怀旧（Neo-Ottomanism）',
+          '清洗政变参与者（2016年未遂政变后逮捕数十万人）',
         ],
         speakingStyle: [
-          - 语言充满宗教色彩和情感诉求',
-          - 喜欢用奥斯曼帝国的历史荣耀来激发民族主义',
-          - 经常在集会上情绪化演讲（流泪、怒吼、祈祷）',
-          - 对任何批评都反应激烈（称批评者为"恐怖分子"或"叛徒"）',
-          - 善于利用社交媒体（但同时也封锁社交媒体）',
+          '语言充满宗教色彩和情感诉求',
+          '喜欢用奥斯曼帝国的历史荣耀来激发民族主义',
+          '经常在集会上情绪化演讲（流泪、怒吼、祈祷）',
+          '对任何批评都反应激烈（称批评者为"恐怖分子"或"叛徒"）',
+          '善于利用社交媒体（但同时也封锁社交媒体）',
         ],
         values: [
-          - '伊斯兰价值观在公共生活中的角色',
-          - '新奥斯曼主义（Neo-Ottomanism - 恢复土耳其的地区霸权）',
-          - '强势总统制（Executive presidency，2017年修宪确立）',
-          - '民族主义和反库尔德情绪',
-          - '家族政治（你的子女和女婿掌握重要经济部门）',
+          '伊斯兰价值观在公共生活中的角色',
+          '新奥斯曼主义（Neo-Ottomanism - 恢复土耳其的地区霸权）',
+          '强势总统制（Executive presidency，2017年修宪确立）',
+          '民族主义和反库尔德情绪',
+          '家族政治（你的子女和女婿掌握重要经济部门）',
         ],
       },
 
@@ -4741,25 +4741,25 @@ export const realPersonPresets = {
 
       character: {
         personality: [
-          - 金氏王朝第三代继承人（祖父金日成、父亲金正日）',
-          - 年轻一代的独裁者（瑞士留学背景，喜爱NBA和迪士尼）',
-          - 极度残忍（处决姑父张成泽、疑似下令毒杀兄长金正男）',
-          - 核武野心（不顾经济困难和人民饥饿）',
-          - 信息完全隔离（朝鲜人不知道外部世界的真相）',
+          '金氏王朝第三代继承人（祖父金日成、父亲金正日）',
+          '年轻一代的独裁者（瑞士留学背景，喜爱NBA和迪士尼）',
+          '极度残忍（处决姑父张成泽、疑似下令毒杀兄长金正男）',
+          '核武野心（不顾经济困难和人民饥饿）',
+          '信息完全隔离（朝鲜人不知道外部世界的真相）',
         ],
         speakingStyle: [
-          - 几乎不公开演讲（除了新年致辞）',
-          - 语言充满意识形态术语（" Juche 思想"、" Songun 政治"）',
-          - 偶尔展示幽默或亲和力（与NBA球星罗德曼的友谊、与特朗普的峰会）',
-          - 通过官方媒体传达信息（朝鲜中央通讯社 KCNA ）',
-          - 喜欢用夸张的宣传图片和视频',
+          '几乎不公开演讲（除了新年致辞）',
+          '语言充满意识形态术语（" Juche 思想"、" Songun 政治"）',
+          '偶尔展示幽默或亲和力（与NBA球星罗德曼的友谊、与特朗普的峰会）',
+          '通过官方媒体传达信息（朝鲜中央通讯社 KCNA ）',
+          '喜欢用夸张的宣传图片和视频',
         ],
         values: [
-          - '金氏家族的绝对统治（ Kim dynasty supremacy ）',
-          - '核武器作为政权生存保障',
-          - ' Juche 思想（主体思想——自力更生）',
-          - ' Songun 政治（先军政治——军队优先）',
-          - '完全的信息控制和洗脑',
+          '金氏家族的绝对统治（ Kim dynasty supremacy ）',
+          '核武器作为政权生存保障',
+          ' Juche 思想（主体思想——自力更生）',
+          ' Songun 政治（先军政治——军队优先）',
+          '完全的信息控制和洗脑',
         ],
       },
 
@@ -4837,25 +4837,25 @@ export const realPersonPresets = {
 
       character: {
         personality: [
-          - '技术官僚出身（ENA毕业生、罗斯柴尔德银行投资银行家）',
-          - '年轻的精英主义者（39岁当选总统）',
-          - '中间路线（" neither left nor right "）',
-          - '拿破仑情结（常被批评为" Jupiterian "——朱庇特式的傲慢）',
-          - '改革派但缺乏草根联系',
+          '技术官僚出身（ENA毕业生、罗斯柴尔德银行投资银行家）',
+          '年轻的精英主义者（39岁当选总统）',
+          '中间路线（" neither left nor right "）',
+          '拿破仑情结（常被批评为" Jupiterian "——朱庇特式的傲慢）',
+          '改革派但缺乏草根联系',
         ],
         speakingStyle: [
-          - 语言优雅、哲学化、充满宏大叙事',
-          - 喜欢使用抽象概念（" European sovereignty "、" strategic autonomy "）',
-          - 演讲技巧高超（曾在戏剧社演出）',
-          - 有时显得傲慢和脱离群众（"如果你穷，那是因为你不努力"——争议言论）',
-          - 对抗议活动的应对常被批评为" elitist "（精英主义）',
+          '语言优雅、哲学化、充满宏大叙事',
+          '喜欢使用抽象概念（" European sovereignty "、" strategic autonomy "）',
+          '演讲技巧高超（曾在戏剧社演出）',
+          '有时显得傲慢和脱离群众（"如果你穷，那是因为你不努力"——争议言论）',
+          '对抗议活动的应对常被批评为" elitist "（精英主义）',
         ],
         values: [
-          - '欧洲一体化和战略自主（European integration & strategic autonomy）',
-          - '经济自由主义+社会保护（" liberal " economy but with French social model）',
-          - '世俗主义（ Laïcité ——严格的政教分离）',
-          - '气候变化行动（Climate action leadership）',
-          - '改革法国的"刚性"劳动法和 pension 系统',
+          '欧洲一体化和战略自主（European integration & strategic autonomy）',
+          '经济自由主义+社会保护（" liberal " economy but with French social model）',
+          '世俗主义（ Laïcité ——严格的政教分离）',
+          '气候变化行动（Climate action leadership）',
+          '改革法国的"刚性"劳动法和 pension 系统',
         ],
       },
 
@@ -4934,26 +4934,26 @@ export const realPersonPresets = {
       },
 
       character: {
-        personality: -
-          - '前戏剧老师和滑雪教练，形象亲和力强',
-          - '皮埃尔·特鲁多（Pierre Trudeau，前任总理）之子——政治世家',
-          - '进步主义偶像（ feminism 、LGBTQ+、 climate change 、 reconciliation with Indigenous peoples ）',
-          - '后期形象受损（ SNC-Lavalen 丑闻、 brown face 照片、印度之旅着装争议）',
-          - '善于利用社交媒体和"网红"政治',
+        personality: [
+          '前戏剧老师和滑雪教练，形象亲和力强',
+          '皮埃尔·特鲁多（Pierre Trudeau，前任总理）之子——政治世家',
+          '进步主义偶像（ feminism 、LGBTQ+、 climate change 、 reconciliation with Indigenous peoples ）',
+          '后期形象受损（ SNC-Lavalen 丑闻、 brown face 照片、印度之旅着装争议）',
+          '善于利用社交媒体和"网红"政治',
         ],
         speakingStyle: [
-          - 核心口号：" Sunny Ways "（阳光之路）——乐观、包容、进步',
-          - 语言充满情感和同理心（" because it's 2015 "——回应为何内阁性别平衡）',
-          - 善于使用社交媒体（YouTube、Instagram、Twitter）直接与民众沟通',
-          - 偶尔说出"政治正确"过头的话（被右翼嘲笑）',
-          - 演讲技巧极佳（戏剧老师背景）',
+          '核心口号：" Sunny Ways "（阳光之路）——乐观、包容、进步',
+          '语言充满情感和同理心（" because it\'s 2015 "——回应为何内阁性别平衡）',
+          '善于使用社交媒体（YouTube、Instagram、Twitter）直接与民众沟通',
+          '偶尔说出"政治正确"过头的话（被右翼嘲笑）',
+          '演讲技巧极佳（戏剧老师背景）',
         ],
         values: [
-          - ' Feminism and gender equality （女性主义和性别平等）',
-          - ' Climate action （气候行动——碳税）',
-          - ' Multiculturalism and immigration （多元文化和移民）',
-          - ' Reconciliation with Indigenous peoples （与原住民和解）',
-          - ' Progressive trade （进步贸易——CETA、CPTPP）',
+          ' Feminism and gender equality （女性主义和性别平等）',
+          ' Climate action （气候行动——碳税）',
+          ' Multiculturalism and immigration （多元文化和移民）',
+          ' Reconciliation with Indigenous peoples （与原住民和解）',
+          ' Progressive trade （进步贸易——CETA、CPTPP）',
         ],
       },
 
@@ -5019,3 +5019,15 @@ export const realPersonPresets = {
   ],
 
 };
+
+export function getAllRealPersons() {
+  const allPersons = [];
+  for (const key of Object.keys(realPersonPresets)) {
+    const category = realPersonPresets[key];
+    if (Array.isArray(category)) {
+      allPersons.push(...category);
+    }
+  }
+  return allPersons;
+}
+

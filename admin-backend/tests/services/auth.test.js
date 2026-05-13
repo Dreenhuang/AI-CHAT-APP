@@ -15,8 +15,16 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // ============================================
-// Mock 外部依赖
+// 使用 vi.hoisted 创建 Mock 函数（避免 hoisting 问题）
 // ============================================
+
+const { mockGenerateToken, mockRefreshToken, mockVerifyToken } = vi.hoisted(() => {
+  return {
+    mockGenerateToken: vi.fn(() => 'eyJhbGciOiJIUzI1NiJ9.mock_token'),
+    mockRefreshToken: vi.fn(() => ({ token: 'mock_refresh_token' })),
+    mockVerifyToken: vi.fn(),
+  };
+});
 
 // Mock bcryptjs：控制密码 hash/compare 行为
 vi.mock('bcryptjs', () => {
@@ -24,20 +32,13 @@ vi.mock('bcryptjs', () => {
   const mockCompare = vi.fn();
 
   return {
-    default: {
-      hash: mockHash,
-      compare: mockCompare,
-    },
+    default: { hash: mockHash, compare: mockCompare },
     hash: mockHash,
     compare: mockCompare,
   };
 });
 
-// Mock JWT工具：返回固定token
-const mockGenerateToken = vi.fn(() => 'eyJhbGciOiJIUzI1NiJ9.mock_token');
-const mockRefreshToken = vi.fn(() => ({ token: 'mock_refresh_token' }));
-const mockVerifyToken = vi.fn();
-
+// Mock JWT工具
 vi.mock('../../src/utils/jwt.js', () => ({
   generateToken: mockGenerateToken,
   refreshToken: mockRefreshToken,
@@ -48,12 +49,7 @@ vi.mock('../../src/utils/jwt.js', () => ({
     refreshToken: mockRefreshToken,
     verifyToken: mockVerifyToken,
     extractTokenFromHeader: vi.fn((h) => h?.startsWith('Bearer ') ? h.slice(7) : null),
-    config: {
-      secret: 'test_secret',
-      expiresIn: '24h',
-      refreshExpiresIn: '7d',
-      issuer: 'prd-debate-admin',
-    },
+    config: { secret: 'test_secret', expiresIn: '24h', refreshExpiresIn: '7d', issuer: 'prd-debate-admin' },
   },
 }));
 

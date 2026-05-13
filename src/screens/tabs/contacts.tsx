@@ -187,6 +187,10 @@ const ContactsScreen: React.FC = () => {
 
     // 历史人物筛选
     const allRealPersons = getAllRealPersons();
+    
+    // 获取自定义添加的角色（ID以 custom_ 开头的）
+    const customSouls = souls.filter(s => s.id.startsWith('custom_'));
+    
     const filteredSouls = allRealPersons.filter(person => {
       // 文本搜索
       const matchesSearch = searchText === '' ||
@@ -218,12 +222,36 @@ const ContactsScreen: React.FC = () => {
       },
     }));
 
+    // 合并自定义角色（也应用搜索过滤）
+    const customFiltered = customSouls
+      .filter(soul => searchText === '' || 
+        soul.name.toLowerCase().includes(searchText.toLowerCase()) ||
+        soul.specialty.toLowerCase().includes(searchText.toLowerCase()) ||
+        soul.description.toLowerCase().includes(searchText.toLowerCase())
+      )
+      .map(soul => ({
+        id: soul.id,
+        type: 'soul' as const,
+        item: {
+          ...soul,
+          name: soul.name,
+          description: soul.description,
+          personality: (typeof soul.personality === 'string' ? soul.personality : ''),
+          strengths: [soul.specialty || '自定义'],
+          suitableFor: [],
+          avatar: soul.avatar || memoAvatarUrls[0],
+        },
+      }));
+
+    // 自定义角色放在最前面
+    const allFilteredSouls = [...customFiltered, ...filteredSouls];
+
     const result: SectionData[] = [];
     result.push({ title: '群聊', data: filteredModes });
-    result.push({ title: '好友', data: filteredSouls });
+    result.push({ title: '好友', data: allFilteredSouls });
 
     return result;
-  }, [searchText, selectedCategory, selectedEra, isPersonCategory, isPersonEra]);
+  }, [searchText, selectedCategory, selectedEra, isPersonCategory, isPersonEra, souls]);
 
   // 处理点击
   const handlePressGroup = (group: any) => {

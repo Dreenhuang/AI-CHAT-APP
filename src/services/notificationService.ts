@@ -270,8 +270,16 @@ class NotificationService {
   }
 
   async cancelScheduledNotifications(): Promise<void> {
-    await Notifications.cancelAllScheduledNotificationsAsync();
-    console.log('[NotificationService] 已取消所有定时通知');
+    if (Platform.OS === 'web') {
+      console.log('[NotificationService] Web平台跳过取消通知');
+      return;
+    }
+    try {
+      await Notifications.cancelAllScheduledNotificationsAsync();
+      console.log('[NotificationService] 已取消所有定时通知');
+    } catch (error) {
+      console.warn('[NotificationService] 取消通知失败:', error);
+    }
   }
 
   getSettings(): NotificationSettings {
@@ -359,6 +367,18 @@ class NotificationService {
   }
 
   async sendTestNotification(): Promise<void> {
+    if (Platform.OS === 'web') {
+      if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification('测试通知', {
+          body: '这是一条测试推送通知',
+        });
+        console.log('[NotificationService] Web测试通知已发送');
+      } else {
+        console.warn('[NotificationService] 浏览器通知权限未授权');
+      }
+      return;
+    }
+
     const aiService = AITopicService.getInstance();
     const topics = await aiService.getHotTopics(false);
     const testTopic = topics[0] || {
@@ -368,16 +388,19 @@ class NotificationService {
       category: '科技',
     };
 
-    await Notifications.scheduleNotificationAsync({
-      content: {
-        title: '测试通知',
-        body: testTopic.title,
-        data: { topicId: testTopic.id, type: 'test' },
-      },
-      trigger: null,
-    });
-
-    console.log('[NotificationService] 测试通知已发送');
+    try {
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: '测试通知',
+          body: testTopic.title,
+          data: { topicId: testTopic.id, type: 'test' },
+        },
+        trigger: null,
+      });
+      console.log('[NotificationService] 测试通知已发送');
+    } catch (error) {
+      console.warn('[NotificationService] 测试通知发送失败:', error);
+    }
   }
 }
 

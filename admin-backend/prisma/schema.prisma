@@ -1,0 +1,224 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// 🔐 表1: admins - 管理员账号表
+// ============================================================================
+// 用途：存储管理员后台系统的所有管理员账户信息
+// 类比：就像公司的"员工管理系统"，记录每个管理员的身份、权限和状态
+//
+// 核心设计要点：
+// 1. 使用 UUID 作为主键（安全、全局唯一、不可猜测）
+// 2. password 字段存储 bcrypt 加密后的密码哈希（永远不存明文）
+// 3. permissions 使用 JSON 字段存储细粒度权限列表（灵活扩展）
+// 4. role 字段区分超级管理员、普通管理员和观察者
+// 5. status 支持禁用账户（不删除数据，保留审计轨迹）
+// ============================================================================
+
+model Admin {
+  id            String    @id @default(uuid()) @db.Uuid           // UUID主键，自动生成
+  username      String    @unique @map("username") @db.VarChar(50) // 唯一用户名，登录凭证
+  password      String    @map("password") @db.VarChar(255)        // bcrypt加密密码（ NEVER 存明文）
+  realName      String?   @map("real_name") @db.VarChar(50)       // 真实姓名（可选）
+  role          Role      @default(ADMIN) @map("role")             // 角色枚举：SUPER_ADMIN/ADMIN/OBSERVER
+  status        AdminStatus @default(ACTIVE) @map("status")        // 账户状态：ACTIVE/DISABLED/LOCKED
+  permissions   Json?     @map("permissions")                     // JSON格式权限列表（细粒度权限控制）
+  lastLoginAt   DateTime? @map("last_login_at") @db.Timestamptz    // 最后登录时间
+  lastLoginIp   String?   @map("last_login_ip") @db.VarChar(45)    // 最后登录IP（支持IPv6长度）
+  loginFailCount Int      @default(0) @map("login_fail_count")     // 连续登录失败次数（防暴力破解）
+  lockedUntil   DateTime? @map("locked_until") @db.Timestamptz     // 账户锁定截止时间
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz  // 创建时间（自动设置）
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz       // 最后更新时间（自动维护）
+
+  // 关联关系：一个管理员可以产生多条审计日志
+  auditLogs AuditLog[]
+
+  // 索引定义：优化常用查询性能
+  @@index([username])                    // 索引1：按用户名查询（登录时使用）
+  @@index([status])                      // 索引2：按状态筛选（列表页过滤）
+  @@index([role])                        // 索引3：按角色筛选（权限检查）
+  @@index([createdAt])                   // 索引4：按创建时间排序（管理员列表排序）
+  @@map("admins")                         // 映射到PostgreSQL实际表名：admins
+}
+
+// ============================================================================
+// 📋 表2: audit_logs - 操作审计日志表
+// ============================================================================
+// 用途：记录管理员在后台的所有操作行为，满足合规审计和安全追溯需求
+// 类比：就像银行的"ATM交易日志"，每笔操作都有完整记录
+//
+// 核心设计要点：
+// 1. 自动记录所有写操作（CREATE/UPDATE/DELETE）和敏感操作（LOGIN/EXPORT）
+// 2. old_data 和 new_data 存储操作前后的数据快照（用于对比和回滚）
+// 3. target_type + target_id 组合定位被操作的对象
+// 4. 记录 IP 和 User-Agent 用于安全分析
+// 5. 日志一旦写入不可修改/删除（仅允许追加和查询）
+// ============================================================================
+
+model AuditLog {
+  id          String     @id @default(uuid()) @db.Uuid            // UUID主键
+  adminId     String     @map("admin_id") @db.Uuid                // 操作人ID（外键→admins表）
+  action      Action     @map("action")                           // 操作类型枚举
+  targetType  TargetType @map("target_type")                      // 操作对象类型
+  targetId    String?    @map("target_id") @db.VarChar(100)       // 操作对象的ID
+  oldData     Json?      @map("old_data")                         // 操作前的数据快照（JSON格式）
+  newData     Json?      @map("new_data")                         // 操作后的数据快照（JSON格式)
+  ipAddress   String?    @map("ip_address") @db.VarChar(45)       // 操作者IP地址
+  userAgent   String?    @map("user_agent") @db.Text              // 浏览器/客户端User-Agent字符串
+  result      LogResult  @default(SUCCESS) @map("result")         // 操作结果：SUCCESS/FAILURE/PARTIAL
+  errorMessage String?   @map("error_message") @db.Text           // 失败时的错误详情
+  requestId   String?    @map("request_id") @db.VarChar(100)      // 关联的API请求ID（用于日志追踪）
+  details     Json?      @map("details")                          // 额外的详细信息（自由格式JSON）
+  durationMs  Int?       @map("duration_ms")                      // 操作耗时（毫秒，性能监控用）
+  createdAt   DateTime   @default(now()) @map("created_at") @db.Timestamptz  // 日志创建时间（不可修改）
+
+  // 关联关系：属于某个管理员
+  admin Admin @relation(fields: [adminId], references: [id], onDelete: "Restrict")
+
+  // 索引定义：优化审计日志的常见查询场景
+  @@index([adminId, createdAt])           // 复合索引1：查某管理员的操作历史（最常用）
+  @@index([createdAt Desc])               // 索引2：按时间倒序查看最新日志（仪表盘用）
+  @@index([targetType, targetId])         // 复合索引3：查某对象的所有操作记录
+  @@index([action, createdAt])            // 复合索引4：按操作类型筛选+时间排序
+  @@index([result])                       // 索引5：筛选成功/失败的操作
+  @@index([ipAddress])                    // 索引6：按IP查询（安全分析用）
+  @@map("audit_logs")                     // 映射到PostgreSQL实际表名：audit_logs
+}
+
+// ============================================================================
+// ⚙️ 表3: system_configs - 系统配置表
+// ============================================================================
+// 用途：存储系统的各种配置项（API密钥、功能开关、参数设置等）
+// 类比：就像手机的"设置"页面，每个配置项都是一个可调整的选项
+//
+// 核心设计要点：
+// 1. config_key 唯一标识每个配置项（如 "ai.minimax.api_key"）
+// 2. config_value 使用 JSON 格式，可以存储字符串、数字、布尔值、对象等
+// 3. config_type 分类管理（API密钥、功能开关、AI参数等）
+// 4. is_sensitive 标记敏感信息（API Key等），前端显示时脱敏处理
+// 5. updated_by 记录最后修改人（配合审计日志使用）
+// ============================================================================
+
+model SystemConfig {
+  id            String        @id @default(uuid()) @db.Uuid       // UUID主键
+  configKey     String        @unique @map("config_key") @db.VarChar(100)  // 配置键名（唯一）
+  configValue   Json          @map("config_value")                 // 配置值（JSON格式，灵活存储各种类型）
+  configType    ConfigType    @map("config_type")                  // 配置分类枚举
+  description   String?       @map("description") @db.Text         // 配置项说明（给管理员看的）
+  isSensitive   Boolean       @default(false) @map("is_sensitive") // 是否为敏感信息（API Key等）
+  updatedBy     String?       @map("updated_by") @db.Uuid          // 最后修改的管理员ID
+  createdAt     DateTime      @default(now()) @map("created_at") @db.Timestamptz  // 创建时间
+  updatedAt     DateTime      @updatedAt @map("updated_at") @db.Timestamptz       // 最后更新时间
+
+  // 关联关系：配置由管理员修改（可选，因为初始配置可能是系统预设）
+  admin Admin? @relation(fields: [updatedBy], references: [id], onDelete: "Set Null")
+
+  // 索引定义：优化配置项的查询和分组
+  @@index([configType])                 // 索引1：按配置类型分组显示（配置页面分类）
+  @@index([configKey])                  // 索引2：按键名查找（已unique，索引冗余但加速查询）
+  @@index([isSensitive])                // 索引3：筛选敏感/非敏感配置
+  @@updatedAt                          // 索引4：按更新时间排序（最近修改的配置排在前面）
+  @@map("system_configs")               // 映射到PostgreSQL实际表名：system_configs
+}
+
+// ============================================================================
+// 📝 枚举类型定义
+// ============================================================================
+
+/// 管理员角色枚举
+/// SUPER_ADMIN: 超级管理员（拥有所有权限，可以管理其他管理员）
+/// ADMIN: 普通管理员（拥有大部分业务管理权限）
+/// OBSERVER: 观察者（只能查看数据，不能修改）
+enum Role {
+  SUPER_ADMIN   // 超级管理员
+  ADMIN         // 普通管理员
+  OBSERVER      // 观察者（只读权限）
+}
+
+/// 管理员账户状态枚举
+/// ACTIVE: 正常可用
+/// DISABLED: 已禁用（手动禁用，可重新启用）
+/// LOCKED: 已锁定（多次登录失败自动锁定，需等待或管理员解锁）
+enum AdminStatus {
+  ACTIVE        // 正常状态
+  DISABLED      // 已禁用
+  LOCKED        // 已锁定
+}
+
+/// 审计日志操作类型枚举
+/// CREATE: 新建资源（如新建议题、新建Soul角色）
+/// UPDATE: 更新资源（如修改议题内容、调整AI参数）
+/// DELETE: 删除资源（如删除议题、封禁用户）
+/// LOGIN: 登录操作（成功/失败）
+/// EXPORT: 导出数据（如导出用户列表、导出审计日志）
+/// CONFIG_CHANGE: 配置变更（如修改API Key、切换功能开关）
+enum Action {
+  CREATE        // 创建操作
+  UPDATE        // 更新操作
+  DELETE        // 删除操作
+  LOGIN         // 登录操作
+  LOGOUT        // 登出操作
+  EXPORT        // 导出操作
+  IMPORT        // 导入操作
+  CONFIG_CHANGE // 配置变更
+  STATUS_CHANGE // 状态变更（启用/禁用）
+  BATCH_OP      // 批量操作
+}
+
+/// 审计日志操作目标类型枚举
+/// USER: 用户相关操作
+/// TOPIC: 议题相关操作
+/// SOUL: Soul角色相关操作
+/// DEBATE: 辩论相关操作
+/// GROUP: 群组相关操作
+/// CONFIG: 系统配置相关操作
+/// ADMIN: 管理员账户相关操作
+enum TargetType {
+  USER          // 用户
+  TOPIC         // 议题
+  SOUL          // Soul角色
+  DEBATE        // 辩论
+  GROUP         // 群组
+  MESSAGE       // 消息
+  CONFIG        // 系统配置
+  ADMIN         // 管理员账户
+  AUDIT_LOG     // 审计日志本身
+  SYSTEM        // 系统级操作
+}
+
+/// 审计日志操作结果枚举
+/// SUCCESS: 操作成功完成
+/// FAILURE: 操作失败（业务逻辑错误、权限不足等）
+/// PARTIAL: 部分成功（批量操作时部分成功部分失败）
+enum LogResult {
+  SUCCESS       // 成功
+  FAILURE       // 失败
+  PARTIAL       // 部分成功
+}
+
+/// 系统配置类型枚举
+/// AI_API_KEY: AI服务API密钥（如MiniMax API Key）
+/// FEATURE_FLAG: 功能开关（控制某功能是否启用）
+/// AI_PARAM: AI模型参数（Temperature、MaxTokens等）
+/// RATE_LIMIT: 限流规则配置
+/// SYSTEM: 系统级配置（公告、维护模式等）
+/// THIRD_PARTY: 第三方服务集成配置
+enum ConfigType {
+  AI_API_KEY    // AI服务API密钥
+  FEATURE_FLAG  // 功能开关
+  AI_PARAM      // AI模型参数
+  RATE_LIMIT    // 限流规则
+  SYSTEM        // 系统配置
+  THIRD_PARTY   // 第三方服务集成
+  SECURITY      // 安全相关配置
+  NOTIFICATION  // 通知推送配置
+}

@@ -41,6 +41,8 @@ model Admin {
 
   // 关联关系：一个管理员可以产生多条审计日志
   auditLogs AuditLog[]
+  // 关联关系：一个管理员可以修改多条系统配置
+  systemConfigs SystemConfig[]
 
   // 索引定义：优化常用查询性能
   @@index([username])                    // 索引1：按用户名查询（登录时使用）

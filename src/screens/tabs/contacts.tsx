@@ -1,16 +1,20 @@
 /**
- * Tab2: 通讯录页
+ * Tab2: 通讯录页 v2.5
  *
- * 显示Soul好友和群组列表（微信风格分段列表）
+ * 核心功能升级：
+ * 1. 类别筛选 - 按角色类型筛选（哲学家/科学家/企业家...）
+ * 2. 时代筛选 - 按历史时期筛选（古代/近代/现代/当代）
+ * 3. 入场动画 - 联系人列表交错出现动画
+ * 4. FAB悬浮按钮动画
+ *
  * 功能：
  * - SectionList 分段显示：群聊在前，好友在后
  * - 点击显示/隐藏搜索框
  * - 联系人项：头像+名称+右箭头
  * - FAB悬浮按钮：新建群组/添加好友
- * - 添加新AI角色Modal（带表单验证）
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -28,6 +32,12 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import Animated, {
+  FadeInDown,
+  FadeInUp,
+  SlideInRight,
+  Layout,
+} from 'react-native-reanimated';
 
 // 导入组件
 import ContactItem from '../../components/ContactItem';
@@ -37,7 +47,7 @@ import FABButton from '../../components/FABButton';
 import { useContactStore } from '../../stores/useContactStore';
 import { Soul, SoulPersonality } from '../../types';
 
-// 导入预设数据 - 19种讨论模式和35位真实历史人物
+// 导入预设数据
 import { DISCUSSION_MODES, getAllModes, getModeCategories } from '../../data/discussionModes';
 import { realPersonPresets, getAllRealPersons } from '../../data/realPersonPresets';
 import { memoAvatarUrls, getMemoAvatarUrl } from '../../data/memoAvatars';
@@ -52,13 +62,32 @@ interface SectionData {
   data: Array<{ id: string; type: 'group' | 'soul'; item: any }>;
 }
 
-/** 头像选项配置 */
-/** 头像选项 - 使用Memo系列35个头像 */
+/** 类别筛选选项 */
+const categoryFilters = [
+  { id: 'all', label: '全部', icon: 'apps-outline' },
+  { id: 'philosopher', label: '哲学家', icon: 'book-outline' },
+  { id: 'scientist', label: '科学家', icon: 'flask-outline' },
+  { id: 'entrepreneur', label: '企业家', icon: 'briefcase-outline' },
+  { id: 'leader', label: '政治家', icon: 'ribbon-outline' },
+  { id: 'literature', label: '文学家', icon: 'create-outline' },
+  { id: 'military', label: '军事家', icon: 'shield-outline' },
+];
+
+/** 时代筛选选项 */
+const eraFilters = [
+  { id: 'all', label: '全部时代' },
+  { id: 'ancient', label: '古代', desc: '公元前' },
+  { id: 'medieval', label: '近代', desc: '1500-1900' },
+  { id: 'modern', label: '现代', desc: '1900-1950' },
+  { id: 'contemporary', label: '当代', desc: '1950至今' },
+];
+
+/** 头像选项 */
 const avatarOptions = memoAvatarUrls.map((url, index) => ({
   seed: `memo_${index + 1}`,
   label: `头像${index + 1}`,
   style: 'memo',
-  url: url, // 直接存储完整URL
+  url: url,
 }));
 
 /** 性格选项 */
@@ -73,19 +102,18 @@ const personalityOptions: Array<{ value: SoulPersonality; label: string; desc: s
 
 const ContactsScreen: React.FC = () => {
   const navigation = useNavigation();
-
-  // 获取动态主题颜色
   const colors = useCurrentColors();
-
-  // Store状态
   const { groups, souls, addSoul, setGroups } = useContactStore();
 
-  // 本地状态
+  // 搜索和筛选状态
   const [showSearch, setShowSearch] = useState(false);
   const [searchText, setSearchText] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [selectedEra, setSelectedEra] = useState('all');
+  const [showFilters, setShowFilters] = useState(false);
   const [showFABMenu, setShowFABMenu] = useState(false);
 
-  // ========== 添加角色Modal相关状态 ==========
+  // Modal状态
   const [showAddModal, setShowAddModal] = useState(false);
   const [formName, setFormName] = useState('');
   const [formSpecialty, setFormSpecialty] = useState('');
@@ -94,23 +122,51 @@ const ContactsScreen: React.FC = () => {
   const [selectedAvatarIndex, setSelectedAvatarIndex] = useState(0);
   const [showPersonalityPicker, setShowPersonalityPicker] = useState(false);
 
-  // ========== 创建群组Modal相关状态 ==========
+  // 创建群组Modal
   const [showCreateGroupModal, setShowCreateGroupModal] = useState(false);
   const [groupName, setGroupName] = useState('');
   const [groupDescription, setGroupDescription] = useState('');
 
-  /**
-   * 构建分段数据（群聊在前，好友在后）
-   *
-   * 数据来源：
-   * - 群聊 = 19种预设讨论模式（每种模式=一个辩论群）
-   * - 好友 = 35个预设Soul角色（每个角色=一个AI好友）
-   */
-  const sections: SectionData[] = useMemo(() => {
-    // ========== 第一段：群聊（19种讨论模式） ==========
-    const allModes = getAllModes(); // 获取所有19种讨论模式
+  // 判断人物类别
+  const isPersonCategory = useCallback((person: any, category: string): boolean => {
+    if (category === 'all') return true;
     
-    // 根据搜索文本筛选讨论模式
+    const categoryMap: Record<string, string[]> = {
+      philosopher: ['哲学家', '哲学', '思想家', '批判哲学', '存在主义', '现象学'],
+      scientist: ['科学家', '物理学家', '化学家', '生物学家', '数学家', '天文学家', '发明家'],
+      entrepreneur: ['企业家', '商业', '创业', '字节跳动', '特斯拉', '苹果', '微软', '亚马逊'],
+      leader: ['政治家', '总统', '总理', '主席', '首相', '皇帝', '领袖'],
+      literature: ['文学家', '作家', '诗人', '小说家', '剧作家'],
+      military: ['军事家', '将军', '元帅', '战略家'],
+    };
+    
+    const keywords = categoryMap[category] || [];
+    const searchText = `${person.name} ${person.description || ''} ${person.category || ''} ${person.era || ''}`.toLowerCase();
+    
+    return keywords.some(k => searchText.includes(k.toLowerCase()));
+  }, []);
+
+  // 判断时代
+  const isPersonEra = useCallback((person: any, era: string): boolean => {
+    if (era === 'all') return true;
+    
+    const eraMap: Record<string, string[]> = {
+      ancient: ['公元前', 'BC', '古代'],
+      medieval: ['1500', '1600', '1700', '1800', '1900', '近代'],
+      modern: ['1900', '1910', '1920', '1930', '1940', '1950', '现代'],
+      contemporary: ['1950', '1960', '1970', '1980', '1990', '2000', '2010', '2020', '当代', '至今'],
+    };
+    
+    const keywords = eraMap[era] || [];
+    const searchText = `${person.name} ${person.era || ''}`.toLowerCase();
+    
+    return keywords.some(k => searchText.includes(k.toLowerCase()));
+  }, []);
+
+  // 构建分段数据
+  const sections: SectionData[] = useMemo(() => {
+    // 讨论模式
+    const allModes = getAllModes();
     const filteredModes = allModes.filter(mode =>
       mode.name.toLowerCase().includes(searchText.toLowerCase()) ||
       mode.description.toLowerCase().includes(searchText.toLowerCase()) ||
@@ -120,76 +176,64 @@ const ContactsScreen: React.FC = () => {
       type: 'group' as const,
       item: {
         ...mode,
-        // 将讨论模式转换为群组格式
         name: mode.name,
         description: mode.description,
-        memberCount: mode.minRoles + '-' + mode.maxRoles, // 显示角色数量范围
+        memberCount: mode.minRoles + '-' + mode.maxRoles,
         category: mode.category,
         icon: mode.icon || '💬',
-        // 仅使用alohe/avatars的Memoji系列PNG头像
         avatar: memoAvatarUrls[modeIndex % 35],
       },
     }));
 
-    // ========== 第二段：好友（35位真实历史人物） ==========
-    const allRealPersons = getAllRealPersons(); // 获取所有35位真实历史人物
-
-    // 根据搜索文本筛选历史人物
-    const filteredSouls = allRealPersons.filter(person =>
-      person.name.toLowerCase().includes(searchText.toLowerCase()) ||
-      person.description.toLowerCase().includes(searchText.toLowerCase()) ||
-      person.category.toLowerCase().includes(searchText.toLowerCase()) ||
-      (person.englishName && person.englishName.toLowerCase().includes(searchText.toLowerCase()))
-    ).map((person, index) => ({
+    // 历史人物筛选
+    const allRealPersons = getAllRealPersons();
+    const filteredSouls = allRealPersons.filter(person => {
+      // 文本搜索
+      const matchesSearch = searchText === '' ||
+        person.name.toLowerCase().includes(searchText.toLowerCase()) ||
+        person.description?.toLowerCase().includes(searchText.toLowerCase()) ||
+        person.category?.toLowerCase().includes(searchText.toLowerCase()) ||
+        person.englishName?.toLowerCase().includes(searchText.toLowerCase());
+      
+      // 类别筛选
+      const matchesCategory = selectedCategory === 'all' || 
+        isPersonCategory(person, selectedCategory);
+      
+      // 时代筛选
+      const matchesEra = selectedEra === 'all' || 
+        isPersonEra(person, selectedEra);
+      
+      return matchesSearch && matchesCategory && matchesEra;
+    }).map((person, index) => ({
       id: person.id,
       type: 'soul' as const,
       item: {
         ...person,
-        // 将历史人物转换为好友格式
         name: person.name,
         description: person.description || `${person.category} | ${person.era}`,
         personality: person.character?.personality?.join('、') || '',
         strengths: [person.category, person.era?.split(' ')[0] || ''],
         suitableFor: (person.works || person.companies || []).slice(0, 3),
-        // 使用Memoji系列头像
         avatar: memoAvatarUrls[index % 35],
       },
     }));
 
     const result: SectionData[] = [];
-
-    // 群聊段（始终显示，即使为空也显示引导）
-    result.push({
-      title: '群聊', // 讨论模式群组
-      data: filteredModes,
-    });
-
-    // 好友段（始终显示）
-    result.push({
-      title: '好友', // Soul AI角色
-      data: filteredSouls,
-    });
+    result.push({ title: '群聊', data: filteredModes });
+    result.push({ title: '好友', data: filteredSouls });
 
     return result;
-  }, [searchText]); // 只依赖searchText，因为使用的是预设数据
+  }, [searchText, selectedCategory, selectedEra, isPersonCategory, isPersonEra]);
 
-  /**
-   * 处理群组点击 - 进入群组聊天
-   */
+  // 处理点击
   const handlePressGroup = (group: any) => {
     (navigation as any).navigate('ChatDetail', { id: group.id });
   };
 
-  /**
-   * 处理好友点击 - 进入私聊
-   */
   const handlePressSoul = (soul: any) => {
     (navigation as any).navigate('ChatDetail', { id: soul.id });
   };
 
-  /**
-   * 处理联系人项点击
-   */
   const handleContactPress = (contact: { type: 'group' | 'soul'; item: any }) => {
     if (contact.type === 'group') {
       handlePressGroup(contact.item);
@@ -198,9 +242,7 @@ const ContactsScreen: React.FC = () => {
     }
   };
 
-  /**
-   * FAB菜单项配置
-   */
+  // FAB菜单
   const fabMenuItems = [
     {
       id: 'create_group',
@@ -225,9 +267,6 @@ const ContactsScreen: React.FC = () => {
     },
   ];
 
-  /**
-   * 重置表单数据
-   */
   const resetForm = () => {
     setFormName('');
     setFormSpecialty('');
@@ -236,9 +275,6 @@ const ContactsScreen: React.FC = () => {
     setSelectedAvatarIndex(0);
   };
 
-  /**
-   * 验证表单数据
-   */
   const validateForm = (): boolean => {
     if (!formName.trim()) {
       Alert.alert('提示', '请输入角色名称');
@@ -259,19 +295,12 @@ const ContactsScreen: React.FC = () => {
     return true;
   };
 
-  /**
-   * 处理保存新角色
-   */
   const handleSaveSoul = () => {
     if (!validateForm()) return;
 
-    // 生成唯一ID（使用时间戳+随机数）
     const newId = `custom_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-
-    // 获取选中的头像样式
     const selectedAvatar = avatarOptions[selectedAvatarIndex];
 
-    // 创建新的Soul对象
     const newSoul: Soul = {
       id: newId,
       name: formName.trim(),
@@ -279,16 +308,13 @@ const ContactsScreen: React.FC = () => {
       personality: formPersonality,
       description: formDescription.trim() || `这是一个自定义的AI辩论角色：${formName.trim()}`,
       specialty: formSpecialty.trim(),
-      winRate: Math.floor(50 + Math.random() * 30), // 新角色胜率50-80%
-      debateCount: 0, // 新角色暂无辩论记录
+      winRate: Math.floor(50 + Math.random() * 30),
+      debateCount: 0,
       isOnline: true,
       addedAt: new Date().toISOString(),
     };
 
-    // 调用Store的addSoul方法保存
     addSoul(newSoul);
-
-    // 关闭Modal并提示成功
     setShowAddModal(false);
     resetForm();
 
@@ -299,17 +325,11 @@ const ContactsScreen: React.FC = () => {
     );
   };
 
-  /**
-   * 处理取消添加
-   */
   const handleCancelAdd = () => {
     setShowAddModal(false);
     resetForm();
   };
 
-  /**
-   * 创建群组
-   */
   const handleCreateGroup = () => {
     if (!groupName.trim()) return;
 
@@ -334,62 +354,92 @@ const ContactsScreen: React.FC = () => {
     Alert.alert('成功', `已创建讨论群组「${newGroup.name}」！`);
   };
 
-  /**
-   * 渲染分段标题
-   */
+  // 渲染分段标题
   const renderSectionHeader = ({ section }: { section: SectionData }) => (
-    <View style={styles.sectionHeader}>
-      <Text style={styles.sectionTitle}>{section.title}</Text>
-    </View>
+    <Animated.View entering={FadeInDown.springify().damping(14)}>
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>{section.title}</Text>
+        <Text style={styles.sectionCount}>{section.data.length}</Text>
+      </View>
+    </Animated.View>
   );
 
-  /**
-   * 渲染联系人项
-   */
-  const renderItem = ({ item }: { item: { id: string; type: 'group' | 'soul'; item: any } }) => (
-    <ContactItem
-      contact={item.item}
-      type={item.type}
-      onPress={() => handleContactPress(item)}
-    />
+  // 渲染联系人项 - 带动画
+  const renderItem = ({ item, index }: { item: { id: string; type: 'group' | 'soul'; item: any }; index: number }) => (
+    <Animated.View
+      entering={FadeInDown.delay(Math.min(index * 30, 200)).springify().damping(14)}
+      layout={Layout.springify()}
+    >
+      <ContactItem
+        contact={item.item}
+        type={item.type}
+        onPress={() => handleContactPress(item)}
+      />
+    </Animated.View>
   );
 
-  /**
-   * 渲染空列表组件
-   */
+  // 渲染空状态
   const renderEmptyComponent = () => (
-    <View style={styles.emptyContainer}>
-      <Ionicons name={showSearch ? "search-outline" : "people-outline"} size={48} color={Colors.textSecondary} style={{ marginBottom: 12 }} />
+    <Animated.View entering={FadeInUp.springify()} style={styles.emptyContainer}>
+      <Ionicons 
+        name={showSearch || selectedCategory !== 'all' || selectedEra !== 'all' ? "search-outline" : "people-outline"} 
+        size={48} 
+        color={Colors.textSecondary} 
+        style={{ marginBottom: 12 }} 
+      />
       <Text style={styles.emptyTitle}>
-        {showSearch ? '未找到联系人' : '暂无联系人'}
+        {showSearch || selectedCategory !== 'all' || selectedEra !== 'all' ? '未找到匹配结果' : '暂无联系人'}
       </Text>
       <Text style={styles.emptyDesc}>
-        {showSearch ? '尝试其他搜索关键词' : '去发现页面认识有趣的辩论伙伴吧！'}
+        {showSearch || selectedCategory !== 'all' || selectedEra !== 'all' 
+          ? '尝试调整筛选条件' 
+          : '去发现页面认识有趣的辩论伙伴吧！'}
       </Text>
-    </View>
+      
+      {(selectedCategory !== 'all' || selectedEra !== 'all') && (
+        <TouchableOpacity 
+          style={styles.clearFilterButton}
+          onPress={() => {
+            setSelectedCategory('all');
+            setSelectedEra('all');
+          }}
+        >
+          <Text style={styles.clearFilterText}>清除筛选</Text>
+        </TouchableOpacity>
+      )}
+    </Animated.View>
   );
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* 状态栏 - 浅蓝色适配 */}
       <StatusBar barStyle="light-content" backgroundColor={colors.primary} />
 
-      {/* 导航栏 - 浅蓝色统一风格 */}
+      {/* 导航栏 */}
       <View style={[styles.header, { backgroundColor: colors.primary }]}>
         <Text style={styles.headerTitle}>通讯录</Text>
-        <TouchableOpacity
-          onPress={() => setShowSearch(!showSearch)}
-          activeOpacity={0.7}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          style={styles.searchIconButton}
-        >
-          <Ionicons name="search" size={22} color="#FFFFFF" />
-        </TouchableOpacity>
+        <View style={styles.headerRight}>
+          <TouchableOpacity
+            onPress={() => setShowFilters(!showFilters)}
+            activeOpacity={0.7}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            style={[styles.headerButton, showFilters && styles.headerButtonActive]}
+          >
+            <Ionicons name="filter" size={22} color="#FFFFFF" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => setShowSearch(!showSearch)}
+            activeOpacity={0.7}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            style={[styles.headerButton, showSearch && styles.headerButtonActive]}
+          >
+            <Ionicons name="search" size={22} color="#FFFFFF" />
+          </TouchableOpacity>
+        </View>
       </View>
 
-      {/* 搜索框（点击显示） */}
+      {/* 搜索框 */}
       {showSearch && (
-        <View style={styles.searchContainer}>
+        <Animated.View entering={SlideInRight.springify().damping(15)} style={styles.searchContainer}>
           <TextInput
             style={styles.searchInput}
             placeholder="搜索联系人..."
@@ -399,7 +449,108 @@ const ContactsScreen: React.FC = () => {
             autoFocus={showSearch}
             returnKeyType="search"
           />
-        </View>
+          {searchText.length > 0 && (
+            <TouchableOpacity 
+              style={styles.clearSearchButton}
+              onPress={() => setSearchText('')}
+            >
+              <Ionicons name="close-circle" size={18} color={Colors.textSecondary} />
+            </TouchableOpacity>
+          )}
+        </Animated.View>
+      )}
+
+      {/* 筛选区域 */}
+      {showFilters && (
+        <Animated.View entering={FadeInDown.springify().damping(12)} style={styles.filterContainer}>
+          {/* 类别筛选 */}
+          <View style={styles.filterSection}>
+            <Text style={styles.filterLabel}>类别</Text>
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false}
+              style={styles.filterScroll}
+              contentContainerStyle={styles.filterScrollContent}
+            >
+              {categoryFilters.map(filter => (
+                <TouchableOpacity
+                  key={filter.id}
+                  style={[
+                    styles.filterChip,
+                    selectedCategory === filter.id && styles.filterChipActive
+                  ]}
+                  onPress={() => setSelectedCategory(filter.id)}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons 
+                    name={filter.icon as any} 
+                    size={14} 
+                    color={selectedCategory === filter.id ? '#FFFFFF' : Colors.textSecondary} 
+                  />
+                  <Text style={[
+                    styles.filterChipText,
+                    selectedCategory === filter.id && styles.filterChipTextActive
+                  ]}>
+                    {filter.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+
+          {/* 时代筛选 */}
+          <View style={styles.filterSection}>
+            <Text style={styles.filterLabel}>时代</Text>
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false}
+              style={styles.filterScroll}
+              contentContainerStyle={styles.filterScrollContent}
+            >
+              {eraFilters.map(filter => (
+                <TouchableOpacity
+                  key={filter.id}
+                  style={[
+                    styles.filterChip,
+                    selectedEra === filter.id && styles.filterChipActive
+                  ]}
+                  onPress={() => setSelectedEra(filter.id)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[
+                    styles.filterChipText,
+                    selectedEra === filter.id && styles.filterChipTextActive
+                  ]}>
+                    {filter.label}
+                  </Text>
+                  {filter.desc && (
+                    <Text style={[
+                      styles.filterChipDesc,
+                      selectedEra === filter.id && styles.filterChipTextActive
+                    ]}>
+                      {filter.desc}
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </Animated.View>
+      )}
+
+      {/* 活跃筛选标签 */}
+      {(selectedCategory !== 'all' || selectedEra !== 'all') && (
+        <Animated.View entering={FadeInDown.delay(100)} style={styles.activeFiltersBar}>
+          <Ionicons name="funnel-outline" size={14} color={Colors.primary} />
+          <Text style={styles.activeFiltersText}>
+            {selectedCategory !== 'all' && categoryFilters.find(f => f.id === selectedCategory)?.label}
+            {selectedCategory !== 'all' && selectedEra !== 'all' && ' | '}
+            {selectedEra !== 'all' && eraFilters.find(f => f.id === selectedEra)?.label}
+          </Text>
+          <TouchableOpacity onPress={() => { setSelectedCategory('all'); setSelectedEra('all'); }}>
+            <Ionicons name="close-circle" size={16} color={Colors.textSecondary} />
+          </TouchableOpacity>
+        </Animated.View>
       )}
 
       {/* 分段列表 */}
@@ -414,7 +565,7 @@ const ContactsScreen: React.FC = () => {
         stickySectionHeadersEnabled={true}
       />
 
-      {/* FAB悬浮按钮 - 右下角 */}
+      {/* FAB悬浮按钮 */}
       <FABButton
         icon="add"
         showMenu={showFABMenu}
@@ -432,28 +583,16 @@ const ContactsScreen: React.FC = () => {
       >
         <View style={styles.addModalOverlay}>
           <View style={styles.addModalContent}>
-            {/* Modal标题栏 */}
             <View style={styles.addModalHeader}>
               <Text style={styles.addModalTitle}>添加新角色</Text>
-              <TouchableOpacity
-                  onPress={handleCancelAdd}
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                >
-                  <Ionicons name="close" size={22} color={Colors.textSecondary} />
-                </TouchableOpacity>
+              <TouchableOpacity onPress={handleCancelAdd} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                <Ionicons name="close" size={22} color={Colors.textSecondary} />
+              </TouchableOpacity>
             </View>
 
-            {/* 表单内容（可滚动） */}
-            <ScrollView
-              style={styles.addFormScrollView}
-              showsVerticalScrollIndicator={false}
-              keyboardShouldPersistTaps="handled"
-            >
-              {/* 角色名称输入框 */}
+            <ScrollView style={styles.addFormScrollView} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
               <View style={styles.formGroup}>
-                <Text style={styles.formLabel}>
-                  角色名称 <Text style={styles.requiredMark}>*</Text>
-                </Text>
+                <Text style={styles.formLabel}>角色名称 <Text style={styles.requiredMark}>*</Text></Text>
                 <TextInput
                   style={styles.formInput}
                   value={formName}
@@ -466,11 +605,8 @@ const ContactsScreen: React.FC = () => {
                 <Text style={styles.charCount}>{formName.length}/20</Text>
               </View>
 
-              {/* 专业领域输入框 */}
               <View style={styles.formGroup}>
-                <Text style={styles.formLabel}>
-                  专业领域 <Text style={styles.requiredMark}>*</Text>
-                </Text>
+                <Text style={styles.formLabel}>专业领域 <Text style={styles.requiredMark}>*</Text></Text>
                 <TextInput
                   style={styles.formInput}
                   value={formSpecialty}
@@ -481,7 +617,6 @@ const ContactsScreen: React.FC = () => {
                 />
               </View>
 
-              {/* 性格特点选择器 */}
               <View style={styles.formGroup}>
                 <Text style={styles.formLabel}>性格特点</Text>
                 <TouchableOpacity
@@ -496,7 +631,6 @@ const ContactsScreen: React.FC = () => {
                 </TouchableOpacity>
               </View>
 
-              {/* 角色描述输入框（可选） */}
               <View style={styles.formGroup}>
                 <Text style={styles.formLabel}>角色简介（可选）</Text>
                 <TextInput
@@ -512,28 +646,18 @@ const ContactsScreen: React.FC = () => {
                 />
               </View>
 
-              {/* 头像选择区域 */}
               <View style={styles.formGroup}>
                 <Text style={styles.formLabel}>选择头像</Text>
                 <View style={styles.avatarGrid}>
                   {avatarOptions.map((avatar, index) => (
                     <TouchableOpacity
                       key={avatar.seed}
-                      style={[
-                        styles.avatarOption,
-                        selectedAvatarIndex === index && styles.avatarOptionSelected,
-                      ]}
+                      style={[styles.avatarOption, selectedAvatarIndex === index && styles.avatarOptionSelected]}
                       onPress={() => setSelectedAvatarIndex(index)}
                       activeOpacity={0.7}
                     >
-                      <Image
-                        source={{ uri: avatar.url }}
-                        style={styles.avatarPreview}
-                      />
-                      <Text style={[
-                        styles.avatarLabel,
-                        selectedAvatarIndex === index && styles.avatarLabelSelected,
-                      ]}>
+                      <Image source={{ uri: avatar.url }} style={styles.avatarPreview} />
+                      <Text style={[styles.avatarLabel, selectedAvatarIndex === index && styles.avatarLabelSelected]}>
                         {avatar.label}
                       </Text>
                       {selectedAvatarIndex === index && (
@@ -546,21 +670,13 @@ const ContactsScreen: React.FC = () => {
                 </View>
               </View>
 
-              {/* 预览卡片 */}
               <View style={styles.previewCard}>
                 <Text style={styles.previewTitle}>角色预览</Text>
                 <View style={styles.previewContent}>
-                  <Image
-                    source={{ uri: avatarOptions[selectedAvatarIndex]?.url }}
-                    style={styles.previewAvatar}
-                  />
+                  <Image source={{ uri: avatarOptions[selectedAvatarIndex]?.url }} style={styles.previewAvatar} />
                   <View style={styles.previewInfo}>
-                    <Text style={styles.previewName} numberOfLines={1}>
-                      {formName || '未命名角色'}
-                    </Text>
-                    <Text style={styles.previewSpecialty} numberOfLines={1}>
-                      {formSpecialty || '未填写专业领域'}
-                    </Text>
+                    <Text style={styles.previewName} numberOfLines={1}>{formName || '未命名角色'}</Text>
+                    <Text style={styles.previewSpecialty} numberOfLines={1}>{formSpecialty || '未填写专业领域'}</Text>
                     <Text style={styles.previewPersonality} numberOfLines={1}>
                       性格：{personalityOptions.find(p => p.value === formPersonality)?.label}
                     </Text>
@@ -569,13 +685,8 @@ const ContactsScreen: React.FC = () => {
               </View>
             </ScrollView>
 
-            {/* 底部按钮区域 */}
             <View style={styles.addModalFooter}>
-              <TouchableOpacity
-                style={[styles.cancelButton]}
-                onPress={handleCancelAdd}
-                activeOpacity={0.7}
-              >
+              <TouchableOpacity style={[styles.cancelButton]} onPress={handleCancelAdd} activeOpacity={0.7}>
                 <Text style={styles.cancelButtonText}>取消</Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -591,18 +702,14 @@ const ContactsScreen: React.FC = () => {
         </View>
       </Modal>
 
-      {/* ========== 性格选择子Modal ========== */}
+      {/* 性格选择Modal */}
       <Modal
         visible={showPersonalityPicker}
         animationType="fade"
         transparent={true}
         onRequestClose={() => setShowPersonalityPicker(false)}
       >
-        <TouchableOpacity
-          style={styles.pickerOverlay}
-          activeOpacity={1}
-          onPress={() => setShowPersonalityPicker(false)}
-        >
+        <TouchableOpacity style={styles.pickerOverlay} activeOpacity={1} onPress={() => setShowPersonalityPicker(false)}>
           <View style={styles.pickerContent}>
             <View style={styles.pickerHeader}>
               <Text style={styles.pickerTitle}>选择性格类型</Text>
@@ -613,21 +720,12 @@ const ContactsScreen: React.FC = () => {
             {personalityOptions.map((option) => (
               <TouchableOpacity
                 key={option.value}
-                style={[
-                  styles.pickerItem,
-                  formPersonality === option.value && styles.pickerItemSelected,
-                ]}
-                onPress={() => {
-                  setFormPersonality(option.value);
-                  setShowPersonalityPicker(false);
-                }}
+                style={[styles.pickerItem, formPersonality === option.value && styles.pickerItemSelected]}
+                onPress={() => { setFormPersonality(option.value); setShowPersonalityPicker(false); }}
                 activeOpacity={0.7}
               >
                 <View style={styles.pickerItemLeft}>
-                  <Text style={[
-                    styles.pickerItemLabel,
-                    formPersonality === option.value && styles.pickerItemSelectedText,
-                  ]}>
+                  <Text style={[styles.pickerItemLabel, formPersonality === option.value && styles.pickerItemSelectedText]}>
                     {option.label}
                   </Text>
                   <Text style={styles.pickerItemDesc}>{option.desc}</Text>
@@ -641,25 +739,13 @@ const ContactsScreen: React.FC = () => {
         </TouchableOpacity>
       </Modal>
 
-      {/* ========== 创建群组Modal ========== */}
-      <Modal
-        visible={showCreateGroupModal}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowCreateGroupModal(false)}
-      >
-        <TouchableOpacity
-          style={styles.createGroupOverlay}
-          activeOpacity={1}
-          onPress={() => setShowCreateGroupModal(false)}
-        >
+      {/* 创建群组Modal */}
+      <Modal visible={showCreateGroupModal} transparent animationType="fade" onRequestClose={() => setShowCreateGroupModal(false)}>
+        <TouchableOpacity style={styles.createGroupOverlay} activeOpacity={1} onPress={() => setShowCreateGroupModal(false)}>
           <TouchableOpacity activeOpacity={1} style={styles.createGroupContent}>
             <View style={styles.createGroupHeader}>
               <Text style={styles.createGroupTitle}>建立讨论群组</Text>
-              <TouchableOpacity
-                onPress={() => setShowCreateGroupModal(false)}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              >
+              <TouchableOpacity onPress={() => setShowCreateGroupModal(false)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
                 <Ionicons name="close" size={22} color={Colors.textSecondary} />
               </TouchableOpacity>
             </View>
@@ -676,7 +762,6 @@ const ContactsScreen: React.FC = () => {
                   maxLength={20}
                 />
               </View>
-
               <View style={styles.createGroupField}>
                 <Text style={styles.createGroupLabel}>群组描述</Text>
                 <TextInput
@@ -710,447 +795,135 @@ const ContactsScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
+  container: { flex: 1, backgroundColor: Colors.background },
 
-  // 导航栏样式 - 统一浅蓝色风格
   header: {
-    height: 44,                              // 统一高度
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
+    height: 44, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16,
   },
-  headerTitle: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: '#FFFFFF',
+  headerTitle: { fontSize: 17, fontWeight: '700', color: '#FFFFFF' },
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  headerButton: {
+    width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255, 255, 255, 0.15)', justifyContent: 'center', alignItems: 'center',
   },
-  headerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  searchIconButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
+  headerButtonActive: { backgroundColor: 'rgba(255, 255, 255, 0.3)' },
 
-  // 搜索框样式
   searchContainer: {
-    padding: 12,
-    backgroundColor: '#F8FAFC',                   // 极浅灰蓝背景
-    borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',                  // 柔和边框
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    flexDirection: 'row', alignItems: 'center', padding: 12, backgroundColor: '#F8FAFC',
+    borderBottomWidth: 1, borderBottomColor: '#E2E8F0',
   },
   searchInput: {
-    height: 44,                                  // 标准高度
-    backgroundColor: '#FFFFFF',                   // 纯白背景
-    borderRadius: 12,                             // 中等圆角
-    paddingHorizontal: 14,
-    fontSize: 15,                                 // 统一字号
-    color: Colors.textPrimary,
-    borderWidth: 1.5,
-    borderColor: '#E2E8F0',                      // 柔和边框
-    shadowColor: '#0EA5E9',                      // 浅蓝色阴影（品牌色）
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
+    flex: 1, height: 44, backgroundColor: '#FFFFFF', borderRadius: 12, paddingHorizontal: 14,
+    fontSize: 15, color: Colors.textPrimary, borderWidth: 1.5, borderColor: '#E2E8F0',
   },
+  clearSearchButton: { marginLeft: 10, padding: 4 },
 
-  // 分段标题样式
+  filterContainer: {
+    backgroundColor: '#FFFFFF', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#E2E8F0',
+  },
+  filterSection: { marginBottom: 8 },
+  filterLabel: {
+    fontSize: 12, color: Colors.textSecondary, fontWeight: '500', marginLeft: 16, marginBottom: 8,
+  },
+  filterScroll: { flexGrow: 0 },
+  filterScrollContent: { paddingHorizontal: 12, gap: 8, flexDirection: 'row' },
+  filterChip: {
+    flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 6,
+    backgroundColor: '#F5F5F5', borderRadius: 16, gap: 4,
+  },
+  filterChipActive: { backgroundColor: Colors.primary },
+  filterChipText: { fontSize: 13, color: Colors.textSecondary },
+  filterChipTextActive: { color: '#FFFFFF', fontWeight: '500' },
+  filterChipDesc: { fontSize: 11, color: Colors.textSecondary, marginLeft: 2 },
+
+  activeFiltersBar: {
+    flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 8,
+    backgroundColor: `${Colors.primary}10`, gap: 6,
+  },
+  activeFiltersText: { flex: 1, fontSize: 12, color: Colors.primary },
+
   sectionHeader: {
-    backgroundColor: Colors.background,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: Colors.border,
+    backgroundColor: Colors.background, paddingVertical: 8, paddingHorizontal: 16,
+    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: Colors.border,
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
   },
-  sectionTitle: {
-    fontSize: 13,
-    color: Colors.textSecondary,
-    fontWeight: '500',
-  },
+  sectionTitle: { fontSize: 13, color: Colors.textSecondary, fontWeight: '500' },
+  sectionCount: { fontSize: 12, color: Colors.textSecondary, backgroundColor: '#F0F0F0', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 },
 
-  // 空状态样式
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingTop: 100,
-  },
-  emptyTitle: {
-    fontSize: 16,
-    color: Colors.textPrimary,
-    fontWeight: '500',
-    marginBottom: 6,
-  },
-  emptyDesc: {
-    fontSize: 14,
-    color: Colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-  emptyListContent: {
-    flex: 1,
-  },
+  emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingTop: 100 },
+  emptyTitle: { fontSize: 16, color: Colors.textPrimary, fontWeight: '500', marginBottom: 6 },
+  emptyDesc: { fontSize: 14, color: Colors.textSecondary, textAlign: 'center', lineHeight: 20 },
+  clearFilterButton: { marginTop: 16, paddingHorizontal: 16, paddingVertical: 8, backgroundColor: `${Colors.primary}15`, borderRadius: 16 },
+  clearFilterText: { fontSize: 13, color: Colors.primary, fontWeight: '500' },
+  emptyListContent: { flex: 1 },
 
-  // ========== 添加角色Modal样式 ==========
-  addModalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
-  },
-  addModalContent: {
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    maxHeight: '90%',
-  },
-  addModalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: Colors.border,
-  },
-  addModalTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: Colors.textPrimary,
-  },
+  addModalOverlay: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)', justifyContent: 'flex-end' },
+  addModalContent: { backgroundColor: '#FFFFFF', borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '90%' },
+  addModalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 16, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: Colors.border },
+  addModalTitle: { fontSize: 18, fontWeight: '600', color: Colors.textPrimary },
 
-  // 表单样式
-  addFormScrollView: {
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-  },
-  formGroup: {
-    marginBottom: 18,
-  },
-  formLabel: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: Colors.textPrimary,
-    marginBottom: 8,
-  },
-  requiredMark: {
-    color: '#FA5151',
-  },
-  formInput: {
-    height: 44,
-    backgroundColor: '#F5F5F5',
-    borderRadius: 8,
-    paddingHorizontal: 14,
-    fontSize: 15,
-    color: Colors.textPrimary,
-    borderWidth: 1,
-    borderColor: '#E5E5E5',
-  },
-  textArea: {
-    height: 80,
-    paddingTop: 12,
-  },
-  charCount: {
-    fontSize: 12,
-    color: Colors.textSecondary,
-    textAlign: 'right',
-    marginTop: 4,
-  },
+  addFormScrollView: { paddingHorizontal: 20, paddingVertical: 16 },
+  formGroup: { marginBottom: 18 },
+  formLabel: { fontSize: 14, fontWeight: '500', color: Colors.textPrimary, marginBottom: 8 },
+  requiredMark: { color: '#FA5151' },
+  formInput: { height: 44, backgroundColor: '#F5F5F5', borderRadius: 8, paddingHorizontal: 14, fontSize: 15, color: Colors.textPrimary, borderWidth: 1, borderColor: '#E5E5E5' },
+  textArea: { height: 80, paddingTop: 12 },
+  charCount: { fontSize: 12, color: Colors.textSecondary, textAlign: 'right', marginTop: 4 },
 
-  // 性格选择器样式
-  personalitySelector: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    height: 44,
-    backgroundColor: '#F5F5F5',
-    borderRadius: 8,
-    paddingHorizontal: 14,
-    borderWidth: 1,
-    borderColor: '#E5E5E5',
-  },
-  personalityValue: {
-    fontSize: 15,
-    color: Colors.textPrimary,
-  },
+  personalitySelector: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', height: 44, backgroundColor: '#F5F5F5', borderRadius: 8, paddingHorizontal: 14, borderWidth: 1, borderColor: '#E5E5E5' },
+  personalityValue: { fontSize: 15, color: Colors.textPrimary },
 
-  // 头像网格样式
-  avatarGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-  },
+  avatarGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   avatarOption: {
-    width: (Dimensions.get('window').width - 60) / 3 - 8,
-    aspectRatio: 1,
-    borderRadius: 10,
-    backgroundColor: '#F5F5F5',
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
-    borderWidth: 2,
-    borderColor: 'transparent',
+    width: (Dimensions.get('window').width - 60) / 3 - 8, aspectRatio: 1, borderRadius: 10,
+    backgroundColor: '#F5F5F5', alignItems: 'center', justifyContent: 'center', position: 'relative', borderWidth: 2, borderColor: 'transparent',
   },
-  avatarOptionSelected: {
-    borderColor: Colors.primary,
-    backgroundColor: `${Colors.primary}10`,
-  },
-  avatarPreview: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    marginBottom: 6,
-  },
-  avatarLabel: {
-    fontSize: 11,
-    color: Colors.textSecondary,
-  },
-  avatarLabelSelected: {
-    color: Colors.primary,
-    fontWeight: '600',
-  },
-  avatarCheckMark: {
-    position: 'absolute',
-    top: 6,
-    right: 6,
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: Colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  avatarOptionSelected: { borderColor: Colors.primary, backgroundColor: `${Colors.primary}10` },
+  avatarPreview: { width: 48, height: 48, borderRadius: 24, marginBottom: 6 },
+  avatarLabel: { fontSize: 11, color: Colors.textSecondary },
+  avatarLabelSelected: { color: Colors.primary, fontWeight: '600' },
+  avatarCheckMark: { position: 'absolute', top: 6, right: 6, width: 18, height: 18, borderRadius: 9, backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center' },
 
-  // 预览卡片样式
-  previewCard: {
-    backgroundColor: '#F8F9FA',
-    borderRadius: 10,
-    padding: 14,
-    marginTop: 4,
-  },
-  previewTitle: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: Colors.textSecondary,
-    marginBottom: 10,
-  },
-  previewContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  previewAvatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    marginRight: 12,
-  },
-  previewInfo: {
-    flex: 1,
-  },
-  previewName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: Colors.textPrimary,
-    marginBottom: 2,
-  },
-  previewSpecialty: {
-    fontSize: 13,
-    color: Colors.textSecondary,
-    marginBottom: 2,
-  },
-  previewPersonality: {
-    fontSize: 12,
-    color: Colors.textSecondary,
-  },
+  previewCard: { backgroundColor: '#F8F9FA', borderRadius: 10, padding: 14, marginTop: 4 },
+  previewTitle: { fontSize: 13, fontWeight: '500', color: Colors.textSecondary, marginBottom: 10 },
+  previewContent: { flexDirection: 'row', alignItems: 'center' },
+  previewAvatar: { width: 50, height: 50, borderRadius: 25, marginRight: 12 },
+  previewInfo: { flex: 1 },
+  previewName: { fontSize: 16, fontWeight: '600', color: Colors.textPrimary, marginBottom: 2 },
+  previewSpecialty: { fontSize: 13, color: Colors.textSecondary, marginBottom: 2 },
+  previewPersonality: { fontSize: 12, color: Colors.textSecondary },
 
-  // Modal底部按钮
-  addModalFooter: {
-    flexDirection: 'row',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    gap: 12,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: Colors.border,
-  },
-  cancelButton: {
-    flex: 1,
-    height: 46,
-    borderRadius: 8,
-    backgroundColor: '#F5F5F5',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  cancelButtonText: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: Colors.textPrimary,
-  },
-  saveButton: {
-    flex: 1,
-    height: 46,
-    borderRadius: 8,
-    backgroundColor: Colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  saveButtonDisabled: {
-    opacity: 0.5,
-  },
-  saveButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
+  addModalFooter: { flexDirection: 'row', paddingHorizontal: 20, paddingVertical: 16, gap: 12, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: Colors.border },
+  cancelButton: { flex: 1, height: 46, borderRadius: 8, backgroundColor: '#F5F5F5', alignItems: 'center', justifyContent: 'center' },
+  cancelButtonText: { fontSize: 16, fontWeight: '500', color: Colors.textPrimary },
+  saveButton: { flex: 1, height: 46, borderRadius: 8, backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center' },
+  saveButtonDisabled: { opacity: 0.5 },
+  saveButtonText: { fontSize: 16, fontWeight: '600', color: '#FFFFFF' },
 
-  // 性格选择子Modal样式
-  pickerOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-start',
-    paddingTop: 100,
-  },
-  pickerContent: {
-    backgroundColor: '#FFFFFF',
-    marginHorizontal: 16,
-    borderRadius: 12,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  pickerHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: Colors.border,
-  },
-  pickerTitle: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: Colors.textPrimary,
-  },
-  pickerItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: Colors.border,
-  },
-  pickerItemSelected: {
-    backgroundColor: `${Colors.primary}15`,
-  },
-  pickerItemLeft: {
-    flex: 1,
-  },
-  pickerItemLabel: {
-    fontSize: 16,
-    color: Colors.textPrimary,
-  },
-  pickerItemSelectedText: {
-    color: Colors.primary,
-    fontWeight: '600',
-  },
-  pickerItemDesc: {
-    fontSize: 12,
-    color: Colors.textSecondary,
-    marginTop: 2,
-  },
+  pickerOverlay: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)', justifyContent: 'flex-start', paddingTop: 100 },
+  pickerContent: { backgroundColor: '#FFFFFF', marginHorizontal: 16, borderRadius: 12, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 12, elevation: 8 },
+  pickerHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 16, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: Colors.border },
+  pickerTitle: { fontSize: 17, fontWeight: '600', color: Colors.textPrimary },
+  pickerItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: Colors.border },
+  pickerItemSelected: { backgroundColor: `${Colors.primary}15` },
+  pickerItemLeft: { flex: 1 },
+  pickerItemLabel: { fontSize: 16, color: Colors.textPrimary },
+  pickerItemSelectedText: { color: Colors.primary, fontWeight: '600' },
+  pickerItemDesc: { fontSize: 12, color: Colors.textSecondary, marginTop: 2 },
 
-  // 创建群组Modal样式
-  createGroupOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  createGroupContent: {
-    width: '85%',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    maxHeight: '70%',
-  },
-  createGroupHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  createGroupTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: Colors.textPrimary,
-  },
-  createGroupForm: {
-    maxHeight: 300,
-  },
-  createGroupField: {
-    marginBottom: 16,
-  },
-  createGroupLabel: {
-    fontSize: 14,
-    color: Colors.textPrimary,
-    marginBottom: 8,
-    fontWeight: '500',
-  },
-  requiredStar: {
-    color: '#FF3B30',
-  },
-  createGroupInput: {
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 15,
-    color: Colors.textPrimary,
-    backgroundColor: '#FAFAFA',
-  },
-  createGroupTextArea: {
-    height: 80,
-    textAlignVertical: 'top',
-  },
-  createGroupFooter: {
-    marginTop: 16,
-  },
-  createGroupButton: {
-    backgroundColor: Colors.primary,
-    paddingVertical: 14,
-    borderRadius: 10,
-    alignItems: 'center',
-  },
-  createGroupButtonDisabled: {
-    backgroundColor: Colors.textSecondary,
-    opacity: 0.5,
-  },
-  createGroupButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
+  createGroupOverlay: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)', justifyContent: 'center', alignItems: 'center' },
+  createGroupContent: { width: '85%', backgroundColor: '#FFFFFF', borderRadius: 16, paddingHorizontal: 20, paddingVertical: 16, maxHeight: '70%' },
+  createGroupHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
+  createGroupTitle: { fontSize: 18, fontWeight: '600', color: Colors.textPrimary },
+  createGroupForm: { maxHeight: 300 },
+  createGroupField: { marginBottom: 16 },
+  createGroupLabel: { fontSize: 14, color: Colors.textPrimary, marginBottom: 8, fontWeight: '500' },
+  requiredStar: { color: '#FF3B30' },
+  createGroupInput: { borderWidth: 1, borderColor: Colors.border, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, fontSize: 15, color: Colors.textPrimary, backgroundColor: '#FAFAFA' },
+  createGroupTextArea: { height: 80, textAlignVertical: 'top' },
+  createGroupFooter: { marginTop: 16 },
+  createGroupButton: { backgroundColor: Colors.primary, paddingVertical: 14, borderRadius: 10, alignItems: 'center' },
+  createGroupButtonDisabled: { backgroundColor: Colors.textSecondary, opacity: 0.5 },
+  createGroupButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '600' },
 });
 
 export default ContactsScreen;

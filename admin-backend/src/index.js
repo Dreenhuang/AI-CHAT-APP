@@ -32,6 +32,7 @@ import userRoutes from './routes/user.js';           // 导入用户管理路由
 import configRoutes from './routes/config.js';         // 导入系统配置管理路由
 import soulRoutes from './routes/soul.js';             // 导入Soul角色管理路由
 import auditLogRoutes from './routes/auditLog.js';    // 导入审计日志路由
+import pushRoutes from './routes/push.js';              // 导入推送管理路由
 import { auditLoggerPlugin } from './middleware/auditLogger.js';  // 导入全局审计中间件
 import { authMiddleware as auth } from './middleware/auth.js';
 import { checkRole, checkPermission, ROLES } from './middleware/rbac.js';
@@ -269,6 +270,14 @@ await fastify.register(configRoutes, { prefix: `${API_PREFIX}/configs` });
  *   - PATCH  /:id/ai-config       调整AI参数（S005）- temperature/maxTokens等
  */
 await fastify.register(soulRoutes, { prefix: `${API_PREFIX}/souls` });
+
+/**
+ * 注册推送管理路由
+ * 前缀: /api/admin/v1/push
+ * 包含：推送活动列表(P001)、详情(P002)、创建(P003)、编辑(P004)、删除(P005)
+ * 推送限额：获取(P006)、更新(P007)
+ */
+await fastify.register(pushRoutes, { prefix: `${API_PREFIX}/push` });
 
 // ============================================
 // 示例路由（演示RBAC用法）

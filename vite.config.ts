@@ -2,6 +2,16 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
 
+const reactNativeWebAliases = {
+  'react-native': 'react-native-web',
+  'react-native/Libraries/Utilities/codegenNativeComponent': path.resolve(__dirname, 'node_modules/react-native-web/dist/modules/forwardedProps/index.js'),
+  'react-native/Libraries/Renderer/shims/ReactNative': 'react-native-web/dist/exports/AppRegistry',
+  'react-native/Libraries/ReactNative/ReactFabricPublicInstance/ReactFabricPublicInstance': path.resolve(__dirname, 'node_modules/react-native-web/dist/exports/AppRegistry'),
+  'react-native/Libraries/Renderer/shims/ReactFabric': path.resolve(__dirname, 'node_modules/react-native-web/dist/exports/AppRegistry'),
+  'react-native/Libraries/Renderer/shims/ReactNativeViewConfigRegistry': path.resolve(__dirname, 'node_modules/react-native-web/dist/exports/View'),
+  'react-native/Libraries/Pressability/PressabilityDebug': path.resolve(__dirname, 'node_modules/react-native-web/dist/exports/View'),
+};
+
 export default defineConfig({
   plugins: [react()],
 
@@ -31,15 +41,22 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
-      'react-native': 'react-native-web',
+      ...reactNativeWebAliases,
     },
   },
 
   esbuild: {
-    jsx: 'automatic',
+    loader: 'jsx',
+    include: /.*/,
+    exclude: [],
   },
   
   optimizeDeps: {
+    esbuildOptions: {
+      loader: {
+        '.js': 'jsx',
+      },
+    },
     include: [
       'react',
       'react-dom',

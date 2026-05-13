@@ -285,25 +285,41 @@ const DiscoverScreen: React.FC = () => {
    */
   const { addConversation } = useChatStore();
   const handleStartDebate = (topic: any) => {
-    console.log('Start debate:', topic.title);
+    console.log('[Discover] 点击话题:', topic.title, 'ID:', topic.id);
     const convId = `new_topic_${topic.id}`;
-    // 创建会话后再导航
+    console.log('[Discover] 创建会话ID:', convId);
+    
     const existingConv = useChatStore.getState().conversations.find(c => c.id === convId);
     if (!existingConv) {
       addConversation({
         id: convId,
         title: topic.title,
-        participants: [{ id: 'user', name: '我', role: 'user', avatar: '' }],
+        topicTitle: topic.title,
+        participants: [
+          { id: 'user', name: '我', role: 'user', avatar: '' },
+          { id: 'ai_assistant', name: '辩论助手', role: 'ai', avatar: '' },
+        ],
         lastMessage: topic.description || '',
         updatedAt: new Date().toISOString(),
         unreadCount: 0,
+        status: 'active',
         type: 'debate',
       } as any);
+      console.log('[Discover] 会话已添加到Store');
+    } else {
+      console.log('[Discover] 会话已存在，使用现有会话');
     }
-    (navigation as any).navigate('ChatDetail', {
-      id: convId,
-      topicId: topic.id,
-    });
+    
+    console.log('[Discover] 开始导航到 ChatDetail, id:', convId, 'topicId:', topic.id);
+    try {
+      (navigation as any).navigate('ChatDetail', {
+        id: convId,
+        topicId: topic.id,
+      });
+      console.log('[Discover] 导航成功');
+    } catch (navError) {
+      console.error('[Discover] 导航失败:', navError);
+    }
   };
 
   /**
@@ -443,7 +459,7 @@ const DiscoverScreen: React.FC = () => {
    * Handle start AI debate - 处理AI话题点击
    */
   const handleStartAIDebate = (topic: AIHotTopic) => {
-    console.log('Start AI debate:', topic.title);
+    console.log('[Discover] 点击AI话题:', topic.title, 'ID:', topic.id);
     
     const convertedTopic = {
       id: topic.id,
@@ -454,25 +470,40 @@ const DiscoverScreen: React.FC = () => {
     };
 
     const convId = `new_ai_${topic.id}`;
-    // 创建会话后再导航
+    console.log('[Discover] 创建AI会话ID:', convId);
+    
     const existingConv = useChatStore.getState().conversations.find(c => c.id === convId);
     if (!existingConv) {
       addConversation({
         id: convId,
         title: `AI热点：${topic.title}`,
-        participants: [{ id: 'user', name: '我', role: 'user', avatar: '' }],
+        topicTitle: topic.title,
+        participants: [
+          { id: 'user', name: '我', role: 'user', avatar: '' },
+          { id: 'ai_assistant', name: 'AI助手', role: 'ai', avatar: '' },
+        ],
         lastMessage: topic.description || '',
         updatedAt: new Date().toISOString(),
         unreadCount: 0,
+        status: 'active',
         type: 'debate',
       } as any);
+      console.log('[Discover] AI会话已添加到Store');
+    } else {
+      console.log('[Discover] AI会话已存在，使用现有会话');
     }
 
-    (navigation as any).navigate('ChatDetail', {
-      id: convId,
-      topicId: topic.id,
-      aiTopic: convertedTopic,
-    });
+    console.log('[Discover] 开始导航到 ChatDetail (AI), id:', convId, 'topicId:', topic.id);
+    try {
+      (navigation as any).navigate('ChatDetail', {
+        id: convId,
+        topicId: topic.id,
+        aiTopic: convertedTopic,
+      });
+      console.log('[Discover] AI导航成功');
+    } catch (navError) {
+      console.error('[Discover] AI导航失败:', navError);
+    }
   };
 
   /**

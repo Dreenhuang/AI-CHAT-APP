@@ -10,11 +10,11 @@ echo.
 
 cd /d "%~dp0"
 
-echo [1/3] Checking port 9450 availability...
-netstat -ano | findstr ":9450" | findstr "LISTENING" >nul 2>&1
+echo [1/3] Checking port 9520 availability...
+netstat -ano | findstr ":9520" | findstr "LISTENING" >nul 2>&1
 if %errorlevel%==0 (
-    echo [WARN] Port 9450 is already in use. Attempting to free it...
-    for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":9450" ^| findstr "LISTENING"') do (
+    echo [WARN] Port 9520 is already in use. Attempting to free it...
+    for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":9520" ^| findstr "LISTENING"') do (
         echo [INFO] Killing process PID: %%a
         taskkill /PID %%a /F >nul 2>&1
     )
@@ -22,10 +22,10 @@ if %errorlevel%==0 (
 )
 
 echo [2/3] Starting development server...
-echo [INFO] Server will run on: http://localhost:9450
+echo [INFO] Server will run on: http://localhost:9520
 echo.
 
-start "" http://localhost:9450
+start "" http://localhost:9520
 
 bun run dev
 

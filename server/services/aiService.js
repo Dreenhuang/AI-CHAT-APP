@@ -60,26 +60,25 @@ async function chat(message, options = {}) {
     { role: 'user', content: message }
   ];
 
+  // 优先使用DeepSeek API（更稳定），MiniMax作为备用
   try {
-    console.log(`[AI] 正在调用MiniMax API... 角色: ${role}`);
+    console.log(`[AI] 正在调用DeepSeek API... 角色: ${role}`);
 
-    // 调用MiniMax API
-    const response = await callMinimaxAPI(messages);
+    const response = await callDeepSeekAPI(messages);
 
-    console.log(`[AI] MiniMax API调用成功，回复长度: ${response.length}`);
+    console.log(`[AI] DeepSeek API调用成功，回复长度: ${response.length}`);
 
     return response;
   } catch (error) {
-    console.error('[AI] MiniMax API调用失败:', error.message);
-    console.log('[AI] 正在切换到备用模型 DeepSeek...');
+    console.error('[AI] DeepSeek API调用失败:', error.message);
+    console.log('[AI] 正在切换到备用模型 MiniMax...');
 
     try {
-      // 调用DeepSeek API作为备用
-      const fallbackResponse = await callDeepSeekAPI(messages);
-      console.log(`[AI] DeepSeek API调用成功，回复长度: ${fallbackResponse.length}`);
+      const fallbackResponse = await callMinimaxAPI(messages);
+      console.log(`[AI] MiniMax API调用成功，回复长度: ${fallbackResponse.length}`);
       return fallbackResponse;
-    } catch (deepseekError) {
-      console.error('[AI] DeepSeek API也调用失败:', deepseekError.message);
+    } catch (minimaxError) {
+      console.error('[AI] MiniMax API也调用失败:', minimaxError.message);
       console.log('[AI] 使用模拟回复作为降级方案');
       return generateFallbackResponse(message, role, personality);
     }

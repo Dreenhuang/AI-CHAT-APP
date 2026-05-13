@@ -37,6 +37,12 @@ export const AnimationConfig = {
     medium: 20,
     large: 50,
   },
+
+  /** 交错动画配置 */
+  staggeredConfig: {
+    itemDelay: 50,
+    maxDelay: 300,
+  },
 };
 
 /** 气泡入场动画配置 */

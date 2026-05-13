@@ -142,7 +142,7 @@ const UserTrendChart: React.FC<UserTrendChartProps> = ({ data, period = '近7天
               }}
               dx={-8}
               tickFormatter={(value: number) =>
-                value >= 1000 ? `${(value / 1000).toFixed(1)}k` : value
+                String(value >= 1000 ? `${(value / 1000).toFixed(1)}k` : value)
               }
             />
 

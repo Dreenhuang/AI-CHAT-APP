@@ -289,7 +289,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
         )}
       </div>
 
-      <style jsx>{`
+      <style>{`
         .search-bar-container {
           background: rgba(255, 255, 255, 0.9);
           backdrop-filter: blur(20px);

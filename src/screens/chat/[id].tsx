@@ -113,6 +113,8 @@ const ChatDetailScreen: React.FC = () => {
 
   const { id: conversationId, soulId, topicId } = route.params;
 
+  console.log('[ChatDetail] 组件渲染, params:', route.params);
+
   // 状态管理
   const {
     conversations,
@@ -297,12 +299,24 @@ const ChatDetailScreen: React.FC = () => {
 
   // 自动启动多角色讨论
   useEffect(() => {
-    if (!topicId || debateStartedRef.current) return;
+    console.log('[ChatDetail] useEffect 触发, topicId:', topicId, 'conversationId:', conversationId);
+    
+    if (!topicId) {
+      console.log('[ChatDetail] 没有 topicId，跳过自动辩论初始化');
+      return;
+    }
+    
+    if (debateStartedRef.current) {
+      console.log('[ChatDetail] 辩论已启动过，跳过');
+      return;
+    }
     debateStartedRef.current = true;
 
     const initDebate = async () => {
       try {
+        console.log('[ChatDetail] 开始初始化辩论引擎, topicId:', topicId);
         const topic = allTopics.find(t => t.id === topicId);
+        console.log('[ChatDetail] 查找话题结果:', topic?.title || '未找到');
         const topicTitle = topic?.title || '热门议题讨论';
 
         const modeId = 'standard-debate';

@@ -21,7 +21,7 @@ const STATUS_MAP: Record<string, { label: string; color: string }> = {
 
 const CATEGORY_OPTIONS = ['科技', '社会', '经济', '教育', '文化', '生活', '娱乐', '环境', '全部'];
 
-const defaultForm = { title: '', content: '', sendAt: '', status: 'draft' as const, category: '' };
+const defaultForm = { title: '', content: '', sendAt: '', status: 'draft', category: '' };
 const defaultLimits: PushLimits = { daily: 3, weekly: 15, monthly: 60 };
 
 const PushManagement: React.FC = () => {
@@ -79,7 +79,7 @@ const PushManagement: React.FC = () => {
     setSaving(true);
     try {
       if (editingId) {
-        await pushApi.update(editingId, form);
+        await pushApi.update(editingId, form as Partial<PushCampaign>);
       } else {
         await pushApi.create(form);
       }
@@ -99,7 +99,7 @@ const PushManagement: React.FC = () => {
       title: c.title,
       content: c.content || '',
       sendAt: c.sendAt ? c.sendAt.slice(0, 16) : '',
-      status: c.status,
+      status: c.status as 'draft' | 'scheduled' | 'sent' | 'cancelled',
       category: c.category || '',
     });
     setEditingId(c.id);

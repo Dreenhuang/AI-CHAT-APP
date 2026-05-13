@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, NavigationContainerRef } from '@react-navigation/native';
 import NotificationService, { NotificationSettings, PushStats } from '../services/notificationService';
 
 export interface NotificationState {
@@ -13,7 +13,7 @@ export interface NotificationState {
 }
 
 export function useDailyNotification() {
-  const navigation = useNavigation();
+  const navigation = useNavigation<NavigationContainerRef<any>>();
   const notificationService = NotificationService.getInstance();
   const responseListenerRef = useRef<Notifications.EventSubscription | null>(null);
   const notificationListenerRef = useRef<Notifications.EventSubscription | null>(null);
@@ -45,42 +45,49 @@ export function useDailyNotification() {
   }, []);
 
   useEffect(() => {
-    if (!state.isInitialized) return;
+    if (!state.isInitialized || !navigation) return;
 
-    notificationListenerRef.current =
-      Notifications.addNotificationReceivedListener((notification) => {
-        const data = notification.request.content.data;
-        if (data?.topicId) {
-          console.log('[useDailyNotification] 收到通知:', data.topicId);
-        }
-      });
+    try {
+      notificationListenerRef.current =
+        Notifications.addNotificationReceivedListener((notification) => {
+          const data = notification.request.content.data;
+          if (data?.topicId) {
+            console.log('[useDailyNotification] 收到通知:', data.topicId);
+          }
+        });
 
-    responseListenerRef.current =
-      Notifications.addNotificationResponseReceivedListener((response) => {
-        const data = response.notification.request.content.data;
-        if (data?.topicId && data?.screen === 'ChatDetail') {
-          const topicId = data.topicId;
-          const topicTitle = data.title || '';
+      responseListenerRef.current =
+        Notifications.addNotificationResponseReceivedListener((response) => {
+          const data = response.notification.request.content.data;
+          if (data?.topicId && data?.screen === 'ChatDetail') {
+            const topicId = data.topicId;
+            const topicTitle = data.title || '';
 
-          notificationService.markAsClicked(topicId);
+            notificationService.markAsClicked(topicId);
 
-          setState((prev) => ({
-            ...prev,
-            stats: notificationService.getPushStats(),
-            lastPushedTopic: { id: topicId, title: topicTitle },
-          }));
+            setState((prev) => ({
+              ...prev,
+              stats: notificationService.getPushStats(),
+              lastPushedTopic: { id: topicId, title: topicTitle },
+            }));
 
-          navigation.navigate('ChatDetail' as never, {
-            id: `push_topic_${topicId}`,
-            topicId,
-          } as never);
+            try {
+              navigation.navigate('ChatDetail', {
+                id: `push_topic_${topicId}`,
+                topicId,
+              });
+              console.log('[useDailyNotification] 通知点击跳转:', topicId);
+            } catch (navError) {
+              console.warn('[useDailyNotification] 导航失败:', navError);
+            }
+          }
+        });
 
-          console.log('[useDailyNotification] 通知点击跳转:', topicId);
-        }
-      });
-
-    if (Platform.OS === 'web') {
-      setupWebNotificationHandler();
+      if (Platform.OS === 'web') {
+        setupWebNotificationHandler();
+      }
+    } catch (error) {
+      console.warn('[useDailyNotification] 通知监听器设置失败:', error);
     }
 
     return () => {
@@ -89,13 +96,17 @@ export function useDailyNotification() {
   }, [state.isInitialized, navigation]);
 
   const setupWebNotificationHandler = () => {
-    if ('serviceWorker' in navigator) {
+    if ('serviceWorker' in navigator && navigation) {
       navigator.serviceWorker.addEventListener('message', (event) => {
         if (event.data?.type === 'notification-click' && event.data?.topicId) {
-          navigation.navigate('ChatDetail' as never, {
-            id: `push_topic_${event.data.topicId}`,
-            topicId: event.data.topicId,
-          } as never);
+          try {
+            navigation.navigate('ChatDetail', {
+              id: `push_topic_${event.data.topicId}`,
+              topicId: event.data.topicId,
+            });
+          } catch (navError) {
+            console.warn('[useDailyNotification] Web通知导航失败:', navError);
+          }
         }
       });
     }

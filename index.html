@@ -2,11 +2,126 @@
 <html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>AI Chat App</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    
+    <!-- SEO优化 -->
+    <title>AI Chat - 智能辩论讨论平台</title>
+    <meta name="description" content="与35位真实历史人物进行深度对话，19种专业讨论模式，99%角色还原度" />
+    <meta name="keywords" content="AI对话,智能辩论,历史人物,多AI讨论,Socrates,孔子,Aristotle" />
+    
+    <!-- Open Graph / 社交媒体优化 -->
+    <meta property="og:title" content="AI Chat - 智能辩论讨论平台" />
+    <meta property="og:description" content="与苏格拉底、孔子、爱因斯坦等35位思想家进行深度对话" />
+    <meta property="og:type" content="website" />
+    
+    <!-- PWA支持 -->
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#6C63FF" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    
+    <!-- 预连接关键资源 -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    
+    <!-- Google Fonts - Inter字体 -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    
+    <style>
+      /* 基础样式重置 */
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      
+      html, body {
+        width: 100%;
+        height: 100%;
+        overflow: hidden; /* 禁止滚动，由React Native处理 */
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        background-color: #F5F7FA;
+        color: #2D3436;
+      }
+      
+      #root {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+      }
+      
+      /* 加载动画 */
+      .loading-screen {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        z-index: 9999;
+      }
+      
+      .loading-spinner {
+        width: 50px;
+        height: 50px;
+        border: 4px solid rgba(255, 255, 255, 0.3);
+        border-top-color: #ffffff;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+      }
+      
+      .loading-text {
+        margin-top: 20px;
+        color: white;
+        font-size: 16px;
+        font-weight: 500;
+      }
+      
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+      
+      /* React Native Web基础样式 */
+      [data-reactroot] {
+        width: 100%;
+        height: 100%;
+      }
+    </style>
   </head>
+  
   <body>
+    <!-- 加载占位屏 -->
+    <div class="loading-screen" id="loading">
+      <div class="loading-spinner"></div>
+      <div class="loading-text">正在加载 AI Chat...</div>
+    </div>
+    
+    <!-- React应用挂载点 -->
     <div id="root"></div>
+    
+    <!-- 应用脚本 -->
     <script type="module" src="/src/main.tsx"></script>
+    
+    <!-- 隐藏加载屏幕 -->
+    <script>
+      // 当React应用加载完成后隐藏loading
+      window.addEventListener('load', () => {
+        setTimeout(() => {
+          const loading = document.getElementById('loading');
+          if (loading) {
+            loading.style.opacity = '0';
+            loading.style.transition = 'opacity 0.3s ease';
+            setTimeout(() => loading.remove(), 300);
+          }
+        }, 500); // 最小显示时间，避免闪烁
+        });
+      });
+    </script>
   </body>
 </html>

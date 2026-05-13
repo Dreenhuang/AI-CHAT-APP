@@ -1,0 +1,361 @@
+/**
+ * ============================================
+ * Apple 风格 Design Token 系统
+ * ============================================
+ *
+ * 设计理念：
+ * - 基于 Apple Human Interface Guidelines
+ * - 4px 基准间距系统
+ * - 柔和的阴影与过渡动画
+ * - 清晰的层级关系
+ *
+ * 使用方式：
+ * CSS: var(--color-primary)
+ * Tailwind: text-primary, bg-bg-secondary
+ * React: style={{ color: 'var(--color-primary)' }}
+ */
+
+/* ============================================
+   一、色彩系统 (Color System)
+   ============================================ */
+
+:root {
+  /* ----- 主色调 (Brand Colors) ----- */
+  /* Apple Blue - 主要操作按钮、链接、强调元素 */
+  --color-primary: #0071e3;
+  --color-primary-hover: #0077ed;
+  --color-primary-light: #2997ff;
+  --color-primary-dark: #0055d4;
+  --color-primary-alpha-10: rgba(0, 113, 227, 0.1);
+  --color-primary-alpha-20: rgba(0, 113, 227, 0.2);
+
+  /* 紫色 - 次要强调、特殊功能 */
+  --color-secondary: #5e5ce6;
+  --color-secondary-hover: #6e6ce8;
+  --color-secondary-light: #807ef0;
+  --color-secondary-dark: #4a48c7;
+
+  /* ----- 功能色 (Semantic Colors) ----- */
+  /* 成功状态 */
+  --color-success: #34c759;
+  --color-success-light: #30d158;
+  --color-success-dark: #248a3d;
+  --color-success-bg: rgba(52, 199, 89, 0.1);
+
+  /* 警告状态 */
+  --color-warning: #ff9f0a;
+  --color-warning-light: #ffcc00;
+  --color-warning-dark: #c68400;
+  --color-warning-bg: rgba(255, 159, 10, 0.1);
+
+  /* 错误/危险状态 */
+  --color-danger: #ff3b30;
+  --color-danger-light: #ff453a;
+  --color-danger-dark: #d70015;
+  --color-danger-bg: rgba(255, 59, 48, 0.1);
+
+  /* 信息提示 */
+  --color-info: #007aff;
+  --color-info-bg: rgba(0, 122, 255, 0.1);
+
+  /* ----- 中性色/灰度系统 (Neutral Grays) ----- */
+  /* 背景色 - 从亮到暗 */
+  --color-bg-primary: #ffffff;      /* 主背景 - 卡片、弹窗 */
+  --color-bg-secondary: #f5f5f7;    /* 次级背景 - 页面背景 */
+  --color-bg-tertiary: #e8e8ed;     /* 三级背景 - 分割区域 */
+  --color-bg-quaternary: #d2d2d7;   /* 四级背景 - 禁用状态 */
+
+  /* 文字色 - 从深到浅 */
+  --color-text-primary: #1d1d1f;    /* 主文字 - 标题、正文 */
+  --color-text-secondary: #6e6e73;  /* 次级文字 - 描述、说明 */
+  --color-text-tertiary: #86868b;   /* 三级文字 - 占位符、辅助信息 */
+  --color-text-quaternary: #aeaeb2; /* 四级文字 - 禁用文字 */
+
+  /* 边框色 */
+  --color-border: #d2d2d7;
+  --color-border-light: #e5e5ea;
+  --color-border-dark: #c7c7cc;
+
+  /* 分割线 */
+  --color-divider: rgba(0, 0, 0, 0.08);
+  --color-divider-strong: rgba(0, 0, 0, 0.12);
+
+  /* ============================================
+     二、字体系统 (Typography System)
+     ============================================ */
+
+  /* 字体家族 - Apple SF Pro 字体栈 */
+  --font-family:
+    -apple-system,
+    BlinkMacSystemFont,
+    'SF Pro Display',
+    'SF Pro Text',
+    'Helvetica Neue',
+    Arial,
+    sans-serif;
+
+  /* 字体家族 - 等宽字体（代码） */
+  --font-family-mono:
+    'SF Mono',
+    SFMono-Regular,
+    ui-monospace,
+    Menlo,
+    Monaco,
+    Consolas,
+    monospace;
+
+  /* 字号系统 (基于 4px 基准的黄金比例) */
+  --font-size-xs: 12px;    /* 极小 - 标签、角标 */
+  --font-size-sm: 14px;    /* 小 - 辅助文字、按钮 */
+  --font-size-base: 16px;  /* 基准 - 正文 */
+  --font-size-lg: 18px;    /* 大 - 小标题 */
+  --font-size-xl: 20px;    /* 超大 - 中标题 */
+  --font-size-2xl: 24px;   /* 2倍 - 大标题 */
+  --font-size-3xl: 30px;   /* 3倍 - 特大标题 */
+  --font-size-4xl: 40px;   /* 4倍 - 展示标题 */
+
+  /* 字重 (Font Weight) */
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  /* 行高 (Line Height) */
+  --line-height-tight: 1.25;
+  --line-height-snug: 1.375;
+  --line-height-normal: 1.5;
+  --line-height-relaxed: 1.625;
+  --line-height-loose: 2;
+
+  /* 字间距 (Letter Spacing) */
+  --letter-spacing-tight: -0.02em;
+  --letter-spacing-normal: -0.01em;
+  --letter-spacing-wide: 0.02em;
+
+  /* ============================================
+     三、间距系统 (Spacing System)
+     基准：4px，遵循 4-8-12-16-24-32 规律
+     ============================================ */
+
+  --spacing-1: 4px;     /* 极小间距 */
+  --spacing-2: 8px;     /* 小间距 */
+  --spacing-3: 12px;    /* 中小间距 */
+  --spacing-4: 16px;    /* 中等间距 */
+  --spacing-5: 20px;    /* 中大间距 */
+  --spacing-6: 24px;    /* 大间距 */
+  --spacing-8: 32px;    /* 超大间距 */
+  --spacing-10: 40px;   /* 特大间距 */
+  --spacing-12: 48px;   /* 超特大间距 */
+  --spacing-16: 64px;   /* 章节间距 */
+  --spacing-20: 80px;   /* 区块间距 */
+
+  /* ============================================
+     四、圆角系统 (Border Radius)
+     Apple 风格：较大的圆角，更柔和的视觉效果
+     ============================================ */
+
+  --radius-sm: 6px;      /* 小圆角 - 按钮、输入框 */
+  --radius-md: 10px;     /* 中等圆角 - 卡片、面板 */
+  --radius-lg: 14px;     /* 大圆角 - 大卡片、弹窗 */
+  --radius-xl: 20px;     /* 超大圆角 - 特殊容器 */
+  --radius-full: 9999px; /* 完全圆形 - 头像、标签 */
+
+  /* ============================================
+     五、阴影系统 (Shadow System)
+     Apple 风格：柔和、多层次、自然
+     ============================================ */
+
+  /* 小阴影 - 悬浮、轻微提升 */
+  --shadow-sm:
+    0 1px 2px rgba(0, 0, 0, 0.04),
+    0 1px 3px rgba(0, 0, 0, 0.06);
+
+  /* 默认阴影 - 卡片、下拉菜单 */
+  --shadow-md:
+    0 4px 6px rgba(0, 0, 0, 0.04),
+    0 2px 4px rgba(0, 0, 0, 0.06);
+
+  /* 大阴影 - 弹窗、模态框 */
+  --shadow-lg:
+    0 10px 15px rgba(0, 0, 0, 0.08),
+    0 4px 6px rgba(0, 0, 0, 0.05);
+
+  /* 超大阴影 - 全屏覆盖层 */
+  --shadow-xl:
+    0 20px 25px rgba(0, 0, 0, 0.1),
+    0 10px 10px rgba(0, 0, 0, 0.04);
+
+  /* Apple 特有阴影效果 */
+  --shadow-apple:
+    0 2px 8px rgba(0, 0, 0, 0.08),
+    0 4px 16px rgba(0, 0, 0, 0.04);
+
+  --shadow-apple-lg:
+    0 4px 16px rgba(0, 0, 0, 0.12),
+    0 8px 32px rgba(0, 0, 0, 0.06);
+
+  /* 内阴影 - 按下状态 */
+  --shadow-inner: inset 0 1px 2px rgba(0, 0, 0, 0.06);
+
+  /* ============================================
+     六、过渡动画系统 (Transition System)
+     Apple 风格：流畅、自然、不突兀
+     ============================================ */
+
+  /* 过渡时长 */
+  --transition-duration-fast: 150ms;  /* 快速 - hover、微交互 */
+  --transition-duration-base: 250ms;  /* 基础 - 展开、收起 */
+  --transition-duration-slow: 350ms;  /* 慢速 - 页面切换 */
+
+  /* 缓动函数 (Easing Functions) */
+  --ease-apple: cubic-bezier(0.25, 0.1, 0.25, 1);        /* 标准 Apple 缓动 */
+  --ease-apple-in: cubic-bezier(0.4, 0, 0.2, 1);         /* 进入 */
+  --ease-apple-out: cubic-bezier(0, 0, 0.2, 1);           /* 离开 */
+  --ease-apple-in-out: cubic-bezier(0.42, 0, 0.58, 1);   /* 进出 */
+
+  /* 预定义过渡组合 */
+  --transition-fast:
+    all var(--transition-duration-fast) var(--ease-apple);
+  --transition-base:
+    all var(--transition-duration-base) var(--ease-apple);
+  --transition-slow:
+    all var(--transition-duration-slow) var(--ease-apple);
+  --transition-transform:
+    transform var(--transition-duration-base) var(--ease-apple);
+  --transition-opacity:
+    opacity var(--transition-duration-base) var(--ease-apple);
+  --transition-colors:
+    color var(--transition-duration-fast) var(--ease-apple),
+    background-color var(--transition-duration-fast) var(--ease-apple),
+    border-color var(--transition-duration-fast) var(--ease-apple);
+
+  /* ============================================
+     七、Z-Index 层级管理 (Z-Index Scale)
+     确保层叠顺序清晰可控
+     ============================================ */
+
+  --z-dropdown: 1000;
+  --z-sticky: 1020;
+  --z-fixed: 1030;
+  --z-modal-backdrop: 1040;
+  --z-modal: 1050;
+  --z-popover: 1060;
+  --z-tooltip: 1070;
+  --z-toast: 1080;
+  --z-maximum: 9999;
+
+  /* ============================================
+     八、组件特定变量 (Component Tokens)
+     ============================================ */
+
+  /* 侧边栏 */
+  --sidebar-width: 260px;
+  --sidebar-collapsed-width: 72px;
+  --sidebar-bg: #ffffff;
+  --sidebar-border-color: var(--color-border-light);
+
+  /* 顶部导航栏 */
+  --header-height: 64px;
+  --header-bg: rgba(255, 255, 255, 0.72);
+  --header-backdrop-filter: saturate(180%) blur(20px);
+
+  /* 卡片 */
+  --card-padding: 24px;
+  --card-radius: var(--radius-lg);
+  --card-shadow: var(--shadow-md);
+
+  /* 按钮 */
+  --button-height-sm: 32px;
+  --button-height-md: 40px;
+  --button-height-lg: 48px;
+  --button-padding-x: 24px;
+  --button-radius: var(--radius-md);
+
+  /* 输入框 */
+  --input-height: 40px;
+  --input-padding-x: 16px;
+  --input-radius: var(--radius-md);
+  --input-border-color: var(--color-border);
+  --input-focus-border-color: var(--color-primary);
+  --input-focus-shadow: 0 0 0 3px var(--color-primary-alpha-10);
+
+  /* 表格 */
+  --table-cell-padding: 16px;
+  --table-header-bg: var(--color-bg-secondary);
+  --table-row-hover-bg: var(--color-primary-alpha-10);
+  --table-border-color: var(--color-divider);
+
+  /* 模态框 */
+  --modal-padding: 32px;
+  --modal-radius: var(--radius-xl);
+  --modal-shadow: var(--shadow-xl);
+  --modal-max-width: 520px;
+  --modal-max-height: 85vh;
+
+  /* 通知/Toast */
+  --toast-padding: 16px 24px;
+  --toast-radius: var(--radius-lg);
+  --toast-shadow: var(--shadow-lg);
+
+  /* ============================================
+     九、断点系统 (Breakpoints)
+     用于响应式设计和媒体查询
+     ============================================ */
+
+  --breakpoint-xs: 480px;
+  --breakpoint-sm: 640px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 1024px;
+  --breakpoint-xl: 1280px;
+  --breakpoint-2xl: 1536px;
+}
+
+/* ============================================
+   十、深色模式变量 (Dark Mode Tokens)
+   当用户选择深色模式时自动应用
+   ============================================ */
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* 背景色反转 */
+    --color-bg-primary: #1c1c1e;
+    --color-bg-secondary: #000000;
+    --color-bg-tertiary: #2c2c2e;
+    --color-bg-quaternary: #3a3a3c;
+
+    /* 文字色反转 */
+    --color-text-primary: #f5f5f7;
+    --color-text-secondary: #98989d;
+    --color-text-tertiary: #636366;
+    --color-text-quaternary: #48484a;
+
+    /* 边框色调整 */
+    --color-border: #38383a;
+    --color-border-light: #2c2c2e;
+    --color-border-dark: #48484a;
+
+    /* 分割线调整 */
+    --color-divider: rgba(255, 255, 255, 0.08);
+    --color-divider-strong: rgba(255, 255, 255, 0.12);
+
+    /* 阴影增强（深色模式需要更强的阴影） */
+    --shadow-sm:
+      0 1px 2px rgba(0, 0, 0, 0.2),
+      0 1px 3px rgba(0, 0, 0, 0.3);
+    --shadow-md:
+      0 4px 6px rgba(0, 0, 0, 0.3),
+      0 2px 4px rgba(0, 0, 0, 0.2);
+    --shadow-lg:
+      0 10px 15px rgba(0, 0, 0, 0.4),
+      0 4px 6px rgba(0, 0, 0, 0.3);
+    --shadow-xl:
+      0 20px 25px rgba(0, 0, 0, 0.5),
+      0 10px 10px rgba(0, 0, 0, 0.3);
+
+    /* 组件变量调整 */
+    --sidebar-bg: #1c1c1e;
+    --sidebar-border-color: var(--color-border);
+    --header-bg: rgba(28, 28, 30, 0.72);
+    --card-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+  }
+}

@@ -103,17 +103,17 @@ const MODE_DEFINITIONS = [
   },
   { id: 'problem-breakdown', name: '问题拆解逐级研讨式', category: '结构化议事决策', topicKey: '结构化议事决策',
     roles: [{roleType:'host',label:'主持人',desc:'拆分问题'},{roleType:'member',label:'成员A',desc:'讨论子问题'},{roleType:'member',label:'成员B',desc:'讨论子问题'}],
-    steps: [{step:1,actor:0,label:'拆分问题为子问题'},{step:2,'all-but-host',label:'逐个讨论子问题'},{step:3,actor:0,label:'汇总方案'}]
+    steps: [{step:1,actor:0,label:'拆分问题为子问题'},{step:2,actor:'all-but-host',label:'逐个讨论子问题'},{step:3,actor:0,label:'汇总方案'}]
   },
   { id: 'pros-cons', name: '优缺点分列合议式', category: '结构化议事决策', topicKey: '结构化议事决策',
     roles: [{roleType:'host',label:'主持人',desc:'引导'},{roleType:'pros-side',label:'优点方',desc:'列优点'},{roleType:'cons-side',label:'缺点方',desc:'列缺点'},{roleType:'neutral',label:'综合方',desc:'给结论'}],
-    steps: [{step:1,actor:0,label:'明确对象'},{step:2,actor:1,label:'罗列优点'},{step:3,actor:2,label:'罗列缺点'},{step:4,'all',label:'权衡分析'},{step:5,actor:3,label:'综合结论'}]
+    steps: [{step:1,actor:0,label:'明确对象'},{step:2,actor:1,label:'罗列优点'},{step:3,actor:2,label:'罗列缺点'},{step:4,actor:'all',label:'权衡分析'},{step:5,actor:3,label:'综合结论'}]
   },
 
   // ====== 类型五：头脑风暴共创类 ======
   { id: 'brainstorm', name: '发散头脑风暴式', category: '头脑风暴共创', topicKey: '头脑风暴共创',
     roles: [{roleType:'host',label:'主持人',desc:'激发创意'},{roleType:'ideator',label:'创意者A',desc:'出点子'},{roleType:'ideator',label:'创意者B',desc:'出点子'}],
-    steps: [{step:1,actor:0,label:'宣布主题和规则'},{step:2,'all-but-host',label:'自由发散收集创意'},{step:3,actor:0,label:'归类整理'}]
+    steps: [{step:1,actor:0,label:'宣布主题和规则'},{step:2,actor:'all-but-host',label:'自由发散收集创意'},{step:3,actor:0,label:'归类整理'}]
   },
   { id: 'idea-chain', name: '创意接龙讨论式', category: '头脑风暴共创', topicKey: '头脑风暴共创',
     roles: [{roleType:'initiator',label:'发起人',desc:'起头'},{roleType:'chainer',label:'接龙者A',desc:'延伸'},{roleType:'chainer',label:'接龙者B',desc:'延伸'}],

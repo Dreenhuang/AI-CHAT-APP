@@ -135,7 +135,7 @@ export const isValidPhone = (phone: string): boolean => {
 /**
  * 数组去重
  */
-export const uniqueArray = <T>(array: T[], key?: keyof T): T[] => {
+export const uniqueArray = <T,>(array: T[], key?: keyof T): T[] => {
   if (!key) return [...new Set(array)];
   
   const seen = new Set();

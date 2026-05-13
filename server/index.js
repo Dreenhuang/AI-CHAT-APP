@@ -34,7 +34,7 @@ const errorHandler = require('./middleware/errorHandler');
 
 // 创建Express应用
 const app = express();
-const PORT = process.env.PORT || 9461;
+const PORT = process.env.PORT || 9462;
 
 // 中间件配置
 app.use(cors()); // 允许跨域请求
